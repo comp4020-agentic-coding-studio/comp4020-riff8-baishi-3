@@ -1,12 +1,14 @@
 ---
 import "../styles/global.css";
 import { getAllStrokes } from "../lib/db";
+import { echoFor } from "../lib/echo";
 import { HEIGHT, SEGMENT, SOFT_SPREAD, totalWidth, zoneStart } from "../lib/layout";
 
 const strokes = getAllStrokes();
 const count = strokes.length;
 const width = totalWidth(count);
 const zoneX = zoneStart(count);
+const echo = echoFor(strokes[count - 1], count);
 
 const since =
   count > 0
@@ -36,6 +38,7 @@ const since =
       <p class="tagline">
         One mark, then it stays. <a href="/readme/">What this is, and why</a>.
       </p>
+      <div id="controls" class="controls"></div>
     </header>
 
     <main>
@@ -51,11 +54,34 @@ const since =
 
           {
             strokes.map((s) => (
-              <>
+              <g class="mark" data-t={s.createdAt}>
                 <path d={s.d} class="ink-soft" stroke-width={s.width * SOFT_SPREAD} />
                 <path d={s.d} class="ink" stroke-width={s.width} />
-              </>
+              </g>
             ))
+          }
+
+          {
+            echo && (
+              <g id="echo">
+                <linearGradient
+                  id="echo-fade"
+                  gradientUnits="userSpaceOnUse"
+                  x1={echo.x1}
+                  y1={echo.y1}
+                  x2={echo.x2}
+                  y2={echo.y2}
+                >
+                  <stop offset="0" class="echo-stop" stop-opacity="0.75" />
+                  <stop offset="1" class="echo-stop" stop-opacity="0" />
+                </linearGradient>
+                <path
+                  d={`M ${echo.x1} ${echo.y1} L ${echo.x2} ${echo.y2}`}
+                  class="echo"
+                  stroke-width={Math.max(3, echo.width * 0.6)}
+                />
+              </g>
+            )
           }
 
           <rect
@@ -67,7 +93,7 @@ const since =
             class="zone-outline"
           />
           <text id="zone-prompt" x={zoneX + SEGMENT / 2} y={HEIGHT / 2} class="zone-prompt">
-            draw here
+            {echo ? "continue their line" : "draw here"}
           </text>
           <path id="preview" d="" class="ink" />
           <rect
@@ -79,7 +105,7 @@ const since =
             class="zone-hit"
             tabindex="0"
             role="button"
-            aria-label="Draw your mark here: drag with a pointer, or press Enter or Space to leave a dot"
+            aria-label={`Draw your mark here${echo ? ", where a dotted trail continues the last mark" : ""}: drag with a pointer, or press Enter or Space to leave a dot`}
           />
         </svg>
       </div>
@@ -89,15 +115,20 @@ const since =
           ? "Nobody has drawn yet. The blank strip at the right is where you go first."
           : `${count} mark${count === 1 ? "" : "s"} so far, since ${since}.`}
       </p>
+      <p id="presence" class="status presence" aria-live="polite"></p>
     </main>
 
     <script>
       import { initDrawing } from "../lib/draw";
+      import { initLanterns } from "../lib/lanterns";
+      import { initReplay } from "../lib/replay";
 
       initDrawing(document);
+      initReplay(document);
 
       const wrap = document.getElementById("canvas-wrap");
       if (wrap) wrap.scrollLeft = wrap.scrollWidth;
+      initLanterns(document);
     </script>
   </body>
 </html>

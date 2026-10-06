@@ -127,3 +127,40 @@ named in `README.md`, not gaps I missed. The shared-strip refusal is a
 stopgap that crit 9's concurrency decision should replace. If that decision
 needs more than one table, the no-ORM choice above gets revisited in
 writing.
+
+## Riff: call and response, replay, lanterns
+
+Built from the pod's `fixed-idea.md`. The open questions it left, and what
+I decided:
+
+- **Echo: how near the edge, how faint.** The previous mark has to come
+  within 48 units of the shared edge; otherwise there's no echo. The trail
+  continues the direction of its last stretch for 120 units, always leaning
+  into the new strip. It's dotted, accent-coloured and fades to nothing, so
+  it can't be read as ink. The prompt changes to "continue their line" only
+  when there's an echo. The first strip gets none. Rendered on the server,
+  so the no-JS page shows the same thing.
+- **Replay pacing.** Each step is 140 ms plus a share of the real gap since
+  the previous mark (square-root scaled, capped at an hour, up to 1.4 s),
+  and the whole replay is squeezed to at most 45 s. A burst stays a burst
+  and a quiet week reads as a pause. Starting to draw cancels it. The
+  button is created by the script, so there's never a dead control.
+  During a replay the lanterns' dark lifts, since it's about the whole
+  scroll.
+- **Lanterns.** Fixed radius 170 for now, not shrinking with the crowd. A
+  lantern stays where you left it (on touch it follows the scrolled view)
+  and fades for others 10 s after its tab goes quiet; open tabs re-announce
+  every 4 s. Your own strip is always lit. The dark is 88% (82% in dark
+  mode), so an empty room is dim but never black. Positions are validated
+  (per-tab id shape, inside the scroll, 512-byte body, at most one update
+  per 50 ms, 500 lanterns max).
+- **One machine.** Presence lives in memory, which only holds while there's
+  one machine, and the single SQLite volume already pins that. Nothing new
+  scales out.
+
+Tests: `spec/lanterns.test.ts` (validation, flood refusal, broadcast and
+departure over the live stream, nothing written to the database), plus
+additions to `spec/scroll.test.ts` (echo present and absent, no-JS page has
+no dark and no dead controls, every mark carries its timestamp, no
+UPDATE/DELETE in `src/`). Lantern rendering and replay animation were
+checked by hand in two browser tabs.

@@ -1,5 +1,7 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { expect, inject, it } from "vitest";
-import { HEIGHT, SEGMENT, zoneStart } from "../src/lib/layout";
+import { HEIGHT, SEGMENT, SOFT_SPREAD, zoneStart } from "../src/lib/layout";
 
 // The promise crit 8 actually checks: a mark you make is still there when
 // you come back. Exercised here exactly as a stranger would hit it — over
@@ -93,4 +95,63 @@ it("never deletes: nothing in the app exposes a way to remove a mark", async () 
   // before routing even gets a say) — there's simply no delete path to call.
   expect(res.status).toBeGreaterThanOrEqual(400);
   expect(res.status).toBeLessThan(500);
+});
+
+// Call and response: when the last mark runs up to the shared edge, the
+// blank strip shows an echo of where it was heading. It's server-rendered,
+// so a visitor without JavaScript sees exactly the same thing.
+const page = (): Promise<string> => fetch(new URL("/", baseUrl)).then((r) => r.text());
+
+it("shows an echo in the blank strip when the last mark reaches the shared edge", async () => {
+  const { x, y } = await zoneCentre();
+  const rightEdge = x + SEGMENT / 2 - (6 * SOFT_SPREAD) / 2 - 1;
+  const res = await post({ d: `M ${x} ${y} L ${rightEdge} ${y - 20}`, width: 6 });
+  expect(res.status).toBe(201);
+
+  const html = await page();
+  expect(html).toContain('id="echo"');
+  expect(html).toContain("continue their line");
+});
+
+it("shows no echo when the last mark stayed away from the edge", async () => {
+  const { x, y } = await zoneCentre();
+  const res = await post({ d: `M ${x} ${y} L ${x} ${y}`, width: 14 });
+  expect(res.status).toBe(201);
+
+  const html = await page();
+  expect(html).not.toContain('id="echo"');
+  expect(html).toContain("draw here");
+});
+
+// Replay and lanterns are things only the script can do, so the no-JS page
+// carries no control for them and no darkness: it's the fully lit scroll.
+it("serves the no-JS page fully lit, with no dead replay or lantern controls", async () => {
+  const html = await page();
+  expect(html).not.toMatch(/watch it grow/i);
+  expect(html).not.toMatch(/light the whole scroll/i);
+  expect(html).not.toContain('id="lantern-dark"');
+  expect(html).not.toContain("<mask");
+  expect(html).toMatch(/<div id="controls" class="controls"><\/div>/);
+});
+
+it("gives every mark its timestamp, so a replay can show the true order and pace", async () => {
+  const html = await page();
+  const marks = html.match(/<g class="mark" data-t="\d+">/g) ?? [];
+  expect(marks.length).toBeGreaterThan(0);
+});
+
+// The no-delete promise, read from the source rather than the routes: no
+// SQL that could change or remove a saved mark exists anywhere in the app.
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? sourceFiles(path) : [path];
+  });
+}
+
+it("has no UPDATE or DELETE statement anywhere in the app", () => {
+  for (const file of sourceFiles("src")) {
+    const text = readFileSync(file, "utf8");
+    expect(text, file).not.toMatch(/\bUPDATE\s+\w+\s+SET\b|\bDELETE\s+FROM\b/i);
+  }
 });

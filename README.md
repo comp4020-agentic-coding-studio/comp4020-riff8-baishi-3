@@ -57,9 +57,38 @@ scrolls, likes, moderation tooling. Ink-wash painting tolerates the mark
 that goes wrong, and a scroll that lets you take back a bad stroke stops
 being a record of what actually happened.
 
+## All at once: what's live, and what isn't
+
+Crit 9 asks what it means for several people to be here at the same time.
+The decision: **only light is live.** Everyone on the page right now carries
+a lantern, their pointer or finger, and with the script running the scroll
+is dark except where lanterns light it. Other people's lanterns drift across
+your screen as they move, revealing ink you'd otherwise miss, so the scroll
+can only be seen in full together.
+
+What is *not* live: the marks. A new mark still appears for others when they
+next load the page. Live ink would make the scroll a feed to watch rather
+than a place to be in, and it's a bigger promise than this piece needs.
+
+Why this is the smallest honest version:
+
+- Lantern positions are held in the one Node process's memory, sent over one
+  Server-Sent Events stream, and forgotten when you leave. No new table, no
+  queue, no cache, no second service. Nothing records where anyone looked.
+- A lantern is a per-tab random id and a soft glow: no name, no colour, no
+  account. You can tell someone else is here, never who.
+- Lanterns change what you see, never what's stored. Without JavaScript the
+  scroll is simply fully lit, and a "Light the whole scroll" switch does the
+  same for anyone who wants it.
+
+Two quieter ideas sit beside it, both about time rather than presence. When
+the last mark ran up to the edge of its strip, your blank strip shows a
+dotted echo of where it was heading, inviting you to *continue their line*;
+it's a suggestion, never enforced. And "Watch it grow" replays every mark in
+the order it was made, paced by the real gaps between visits.
+
 ## What's here now
 
-The core interaction only: one growing SVG scroll, one `strokes` table, one
-write path. It's one visitor's experience end to end — draw, reload, find
-your mark still there — not yet the live one several people in the room at
-once will get. That's next crit's work.
+One growing SVG scroll, one `strokes` table, one write path, plus three
+ways of sharing it: lanterns for the people here now, the echo for the
+person just before you, and the replay for everyone who came before.
