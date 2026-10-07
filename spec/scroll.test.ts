@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, inject, it } from "vitest";
+import { echoFor } from "../src/lib/echo";
 import { HEIGHT, SEGMENT, SOFT_SPREAD, zoneStart } from "../src/lib/layout";
 
 // The promise crit 8 actually checks: a mark you make is still there when
@@ -121,6 +122,10 @@ it("shows no echo when the last mark stayed away from the edge", async () => {
   const html = await page();
   expect(html).not.toContain('id="echo"');
   expect(html).toContain("draw here");
+});
+
+it("shows no echo before anyone has drawn", () => {
+  expect(echoFor(undefined, 0)).toBeNull();
 });
 
 // Replay and lanterns are things only the script can do, so the no-JS page

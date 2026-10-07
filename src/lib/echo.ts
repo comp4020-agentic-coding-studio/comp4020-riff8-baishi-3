@@ -11,7 +11,7 @@ import { pathPoints } from "./path";
 // anything to hand over. A mark that stayed in the middle of its own strip
 // gets no echo, rather than one invented from the wrong part of the stroke.
 export const ECHO_REACH = 48;
-const ECHO_LENGTH = 120;
+const ECHO_LENGTH = 140;
 // However steep the last stretch was, the trail still has to lean into the
 // new strip, or it would just run along the edge.
 const MIN_RIGHTWARD = 0.35;

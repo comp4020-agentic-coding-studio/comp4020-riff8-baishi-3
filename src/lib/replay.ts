@@ -105,7 +105,14 @@ export function initReplay(root: Document): void {
         window.setTimeout(() => {
           reveal(mark, Math.min(700, pace[i] * 0.9));
           follow(mark);
-          const when = new Date(times[i]).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+          // the time as well as the day, so a scroll drawn in one afternoon
+          // reads as one afternoon
+          const when = new Date(times[i]).toLocaleString("en-AU", {
+            day: "numeric",
+            month: "short",
+            hour: "numeric",
+            minute: "2-digit",
+          });
           status.textContent = `mark ${i + 1} of ${marks.length}, made ${when}`;
         }, at),
       );
