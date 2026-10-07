@@ -1,10 +1,11 @@
 import type { APIRoute } from "astro";
 import { countStrokes } from "../../lib/db";
 import { HEIGHT, totalWidth } from "../../lib/layout";
-import { moveLantern, removeLantern, subscribe } from "../../lib/presence";
+import { moveLantern, publicId, removeLantern, subscribe } from "../../lib/presence";
 
 // A per-tab random id, never a person: the page makes a fresh one on every
-// load and nothing stores it.
+// load and nothing stores it. It stays between the tab and this route; the
+// stream only carries its hash (see presence.ts).
 const ID = /^[A-Za-z0-9-]{8,64}$/;
 const MAX_BODY = 512;
 
@@ -41,6 +42,8 @@ export const GET: APIRoute = ({ request }) => {
 
 // Where your lantern is now, or that it's gone. Validated like any other
 // input: right shape, inside the scroll, and not faster than a hand moves.
+// A move answers with the lantern's public id, so the tab can tell its own
+// light apart on the stream.
 export const POST: APIRoute = async ({ request }) => {
   const raw = await request.text();
   if (raw.length > MAX_BODY) return new Response("too large", { status: 413 });
@@ -72,5 +75,5 @@ export const POST: APIRoute = async ({ request }) => {
   const result = moveLantern(b.id, x, y);
   if (result === "too-fast") return new Response("too many updates", { status: 429 });
   if (result === "full") return new Response("the room is full", { status: 503 });
-  return new Response(null, { status: 204 });
+  return Response.json({ lantern: publicId(b.id) });
 };
