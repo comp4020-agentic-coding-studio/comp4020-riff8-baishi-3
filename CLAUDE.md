@@ -79,10 +79,16 @@ in either.
   see `spec/scroll.test.ts` for the shape (persistence, validation,
   no-delete) established this crit.
 
+## What's live, and what must stay out of it
+
+`README.md`'s "All at once" section decides it: only lantern positions are
+live. Presence lives in `src/lib/presence.ts`'s memory and nowhere else —
+never a table, a column, a log line or a second service, and a tab's own
+id never goes out on the stream. Marks still arrive on reload; live ink is
+a new decision for `README.md`, not a quiet extension of the stream.
+
 ## Left open on purpose
 
-Real-time sync, multi-user identity and rate-limiting "one mark per
-visitor" are not bugs to fix — they're next crits' scope, named as such in
-`README.md`. Don't build ahead of the crit that's supposed to decide them;
-a premature real-time layer built without the decision `README.md`
-promises to record is exactly the kind of process the brief marks down.
+Multi-user identity and rate-limiting "one mark per visitor" are not bugs
+to fix — they're later crits' scope, named as such in `README.md`. Don't
+build ahead of the crit that's supposed to decide them.

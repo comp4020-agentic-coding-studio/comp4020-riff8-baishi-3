@@ -135,7 +135,7 @@ I decided:
 
 - **Echo: how near the edge, how faint.** The previous mark has to come
   within 48 units of the shared edge; otherwise there's no echo. The trail
-  continues the direction of its last stretch for 120 units, always leaning
+  continues the direction of its last stretch for 140 units, always leaning
   into the new strip. It's dotted, accent-coloured and fades to nothing, so
   it can't be read as ink. The prompt changes to "continue their line" only
   when there's an echo. The first strip gets none. Rendered on the server,
@@ -164,3 +164,47 @@ additions to `spec/scroll.test.ts` (echo present and absent, no-JS page has
 no dark and no dead controls, every mark carries its timestamp, no
 UPDATE/DELETE in `src/`). Lantern rendering and replay animation were
 checked by hand in two browser tabs.
+
+### The unattended run on top of it
+
+The pod's session landed all three ideas in one commit
+([`3039dc2`](https://github.com/comp4020-agentic-coding-studio/comp4020-riff8-baishi-3/commit/3039dc2)),
+so the prompt's "one commit per idea" order was already spent. I didn't
+rewrite that history; this run reviewed it against the prompt and fixed
+what fell short.
+
+- **Lantern ids.** The stream broadcast each tab's own id, and that same id
+  was all a POST needed, so anyone reading the stream could move or put out
+  anyone else's lantern. Now the stream carries a hash of the id, and a
+  move answers with that hash so the tab can tell its own light apart.
+- **Rate limit.** A hard 50 ms floor allowed 20 updates a second and could
+  refuse a hand's last resting place if two updates arrived close together.
+  It's now a token bucket at 10 a second with a burst of 5, and the client
+  re-sends after a 429.
+- **Reconnect.** `EventSource` retries a dropped connection by itself, but
+  gives up for good on an error response, which a restarting Fly machine
+  or the proxy can produce. The client reopens a closed stream itself,
+  backing off to 30 s. I checked it by restarting the server under two
+  open sessions: both re-announced within the 4 s heartbeat.
+- **Hidden tabs.** A tab you've switched away from puts its lantern out and
+  closes its stream, then relights when you return. A forgotten tab
+  shouldn't haunt the room, and an open stream keeps the machine from
+  auto-stopping.
+- **Arrow keys** move your lantern only while the scroll has focus (or
+  nothing does), so they still scroll the page from anywhere else.
+- **Look.** The lit pools were plain paper, so I added a faint amber wash
+  that flickers a little (steady under reduced motion; the light itself
+  never flickers, only the tint). The wash is clipped off your own strip
+  so the echo and prompt read the same lit or dark, and softened in dark
+  mode, where full strength read as fog. The echo's dots are bigger and
+  carry further before fading. The replay shows the time of day, so a
+  scroll made in one afternoon reads as one afternoon.
+
+**One machine.** `flyctl status` and `flyctl volumes list` show one machine
+with the one `data` volume attached. A Fly volume attaches to exactly one
+machine, so a second machine would need a second volume, which means a
+second scroll as well as half the room. CI deploys with `--ha=false`. I
+left `fly.toml` alone, since its header marks it course-managed.
+
+Two sessions side by side in `agent-browser` saw each other's lanterns
+move live, by mouse and by arrow keys; axe reported no violations.

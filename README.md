@@ -76,7 +76,10 @@ Why this is the smallest honest version:
   Server-Sent Events stream, and forgotten when you leave. No new table, no
   queue, no cache, no second service. Nothing records where anyone looked.
 - A lantern is a per-tab random id and a soft glow: no name, no colour, no
-  account. You can tell someone else is here, never who.
+  account. You can tell someone else is here, never who. The stream only
+  carries a hash of that id, so watching it never lets anyone move or put
+  out someone else's light. A tab you've switched away from isn't here,
+  so its lantern goes out until you come back.
 - Lanterns change what you see, never what's stored. Without JavaScript the
   scroll is simply fully lit, and a "Light the whole scroll" switch does the
   same for anyone who wants it.
