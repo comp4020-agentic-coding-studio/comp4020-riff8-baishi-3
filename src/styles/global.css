@@ -156,7 +156,7 @@ h1 {
   fill: none;
   stroke: url(#echo-fade);
   stroke-linecap: round;
-  stroke-dasharray: 0.1 14;
+  stroke-dasharray: 0.1 13;
   pointer-events: none;
 }
 
@@ -200,7 +200,8 @@ h1 {
 }
 
 /* --- Replay ----------------------------------------------------------- */
-.replay-hidden {
+.replay-hidden,
+.replaying #echo {
   opacity: 0;
 }
 
@@ -228,6 +229,22 @@ h1 {
     opacity 1.2s ease;
 }
 
+/* the warm wash breathes a little, like a flame; the light itself (the
+   hole in the dark) holds steady, so ink never flickers out */
+.lantern-glows .glow {
+  animation: flicker 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes flicker {
+  from {
+    filter: opacity(1);
+  }
+
+  to {
+    filter: opacity(0.7);
+  }
+}
+
 .lantern.arriving,
 .lantern.leaving {
   opacity: 0;
@@ -250,6 +267,10 @@ h1 {
   .lantern-dark {
     transition: none;
   }
+
+  .lantern-glows .glow {
+    animation: none;
+  }
 }
 
 :root {
@@ -259,5 +280,10 @@ h1 {
 @media (prefers-color-scheme: dark) {
   :root {
     --night: rgb(4 3 2 / 82%);
+  }
+
+  /* on dark paper a full-strength wash reads as fog, not light */
+  .lantern-glows {
+    opacity: 0.6;
   }
 }

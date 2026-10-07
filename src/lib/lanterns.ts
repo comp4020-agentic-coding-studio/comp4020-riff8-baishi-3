@@ -65,7 +65,10 @@ export function initLanterns(root: Document): void {
   const width = Number(svg.getAttribute("width"));
   const height = Number(svg.getAttribute("height"));
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Your key: it only ever goes to the server. Everyone else, you included,
+  // sees your lantern under the public id the server answers with.
   const id = tabId();
+  let mineOnStream: string | null = null;
 
   // --- the dark, and the holes lanterns make in it ---------------------
   const defs = el("defs", {});
@@ -75,10 +78,12 @@ export function initLanterns(root: Document): void {
       [0.5, "#000", 1],
       [1, "#000", 0],
     ]),
+    // A faint amber wash, strongest at the rim like a flame's halo, light
+    // enough that ink inside keeps its contrast.
     gradient("lantern-warm", [
-      [0, "#ffb866", 0],
-      [0.55, "#ffb866", 0],
-      [0.8, "#ffb866", 0.16],
+      [0, "#ffb866", 0.1],
+      [0.5, "#ffb866", 0.12],
+      [0.78, "#ffb866", 0.3],
       [1, "#ffb866", 0],
     ]),
   );
@@ -103,7 +108,13 @@ export function initLanterns(root: Document): void {
   );
   const holes = el("g", {});
   mask.append(holes);
-  defs.append(mask);
+  // The warm wash is for the dark part of the scroll only: your strip stays
+  // plain paper, so its prompt and echo read exactly as they do lit.
+  const beforeZone = el("clipPath", { id: "lantern-clip" });
+  beforeZone.append(
+    el("rect", { x: "0", y: "0", width: zone.getAttribute("x") ?? String(width), height: String(height) }),
+  );
+  defs.append(mask, beforeZone);
 
   const dark = el("rect", {
     id: "lantern-dark",
@@ -114,14 +125,14 @@ export function initLanterns(root: Document): void {
     height: String(height),
     mask: "url(#lantern-mask)",
   });
-  const glows = el("g", { class: "lantern-glows" });
+  const glows = el("g", { class: "lantern-glows", "clip-path": "url(#lantern-clip)" });
   svg.prepend(defs);
   svg.insertBefore(dark, anchor);
   svg.insertBefore(glows, anchor);
 
   const makeLight = (mine: boolean): Light => {
     const hole = el("circle", { r: String(RADIUS), cx: "0", cy: "0", fill: "url(#lantern-hole)", class: "lantern" });
-    const glow = el("circle", { r: String(RADIUS), cx: "0", cy: "0", fill: "url(#lantern-warm)", class: "lantern" });
+    const glow = el("circle", { r: String(RADIUS), cx: "0", cy: "0", fill: "url(#lantern-warm)", class: "lantern glow" });
     if (!mine && !reduced) {
       hole.classList.add("drifts");
       glow.classList.add("drifts");
@@ -170,24 +181,43 @@ export function initLanterns(root: Document): void {
   let pending: number | null = null;
   let lastPointer = "mouse";
 
-  const send = (): void => {
+  let away = false;
+
+  const schedule = (delay: number): void => {
+    if (pending !== null || away) return;
+    pending = window.setTimeout(send, delay);
+  };
+
+  function send(): void {
     pending = null;
+    if (away) return;
     lastSent = Date.now();
-    void fetch("/api/lanterns", {
+    fetch("/api/lanterns", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id, x: Math.round(pos.x), y: Math.round(pos.y) }),
-    }).catch(() => {
-      // a dropped update is fine: the next one, or the heartbeat, carries on
-    });
-  };
+    })
+      .then(async (res) => {
+        // Refused for going too fast: make sure where the hand came to rest
+        // still arrives, rather than whatever got through before it.
+        if (res.status === 429) schedule(SEND_EVERY_MS * 2);
+        if (!res.ok || mineOnStream) return;
+        const { lantern } = (await res.json()) as { lantern?: string };
+        if (typeof lantern === "string") {
+          mineOnStream = lantern;
+          drop(lantern);
+        }
+      })
+      .catch(() => {
+        // a dropped update is fine: the next one, or the heartbeat, carries on
+      });
+  }
 
   const moveTo = (x: number, y: number): void => {
     pos.x = Math.min(width, Math.max(0, x));
     pos.y = Math.min(height, Math.max(0, y));
     place(own, pos.x, pos.y);
-    if (pending !== null) return;
-    pending = window.setTimeout(send, Math.max(0, SEND_EVERY_MS - (Date.now() - lastSent)));
+    schedule(Math.max(0, SEND_EVERY_MS - (Date.now() - lastSent)));
   };
 
   const toSvg = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -214,9 +244,12 @@ export function initLanterns(root: Document): void {
     if (lastPointer !== "mouse") moveTo(wrap.scrollLeft + wrap.clientWidth / 2, pos.y);
   });
 
+  // Arrow keys move your lantern while the scroll has focus (or nothing
+  // does), and are left alone everywhere else so the page still scrolls.
   root.addEventListener("keydown", (e) => {
-    const t = e.target as HTMLElement | null;
-    if (t && t.closest("input, textarea, select, button")) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const t = e.target as Element | null;
+    if (t && t !== root.body && !wrap.contains(t)) return;
     const delta: Record<string, [number, number]> = {
       ArrowLeft: [-STEP, 0],
       ArrowRight: [STEP, 0],
@@ -235,16 +268,17 @@ export function initLanterns(root: Document): void {
 
   moveTo(pos.x, pos.y);
   window.setInterval(() => {
-    if (Date.now() - lastSent >= STILL_HERE_MS) send();
+    if (!away && Date.now() - lastSent >= STILL_HERE_MS) send();
   }, 1_000);
-  window.addEventListener("pagehide", () => {
+  const putOut = (): void => {
     void fetch("/api/lanterns", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id, gone: true }),
       keepalive: true,
     }).catch(() => {});
-  });
+  };
+  window.addEventListener("pagehide", putOut);
 
   // --- everyone else ---------------------------------------------------
   const others = new Map<string, Light>();
@@ -260,7 +294,7 @@ export function initLanterns(root: Document): void {
   };
 
   const show = (l: { id: string; x: number; y: number }): void => {
-    if (l.id === id) return;
+    if (l.id === mineOnStream) return;
     let light = others.get(l.id);
     if (!light) {
       light = makeLight(false);
@@ -281,6 +315,16 @@ export function initLanterns(root: Document): void {
     }
   };
 
+  // Gone at once, no fade: for a light that turns out to be your own.
+  function drop(otherId: string): void {
+    const light = others.get(otherId);
+    if (!light) return;
+    others.delete(otherId);
+    light.hole.remove();
+    light.glow.remove();
+    describe();
+  }
+
   const hide = (otherId: string): void => {
     const light = others.get(otherId);
     if (!light) return;
@@ -290,13 +334,62 @@ export function initLanterns(root: Document): void {
   };
 
   describe();
-  const source = new EventSource("/api/lanterns");
-  source.addEventListener("snapshot", (e) => {
-    const all = JSON.parse((e as MessageEvent).data) as { id: string; x: number; y: number }[];
-    const here = new Set(all.map((l) => l.id));
-    for (const otherId of [...others.keys()]) if (!here.has(otherId)) hide(otherId);
-    for (const l of all) show(l);
+
+  // EventSource retries a dropped connection by itself, but gives up for
+  // good on an error response (a restarting machine, a proxy hiccup), so
+  // a closed stream is reopened here, backing off up to half a minute.
+  let source: EventSource | null = null;
+  let retryMs = 1_000;
+  let retryTimer: number | null = null;
+
+  const open = (): void => {
+    if (source || away) return;
+    const s = new EventSource("/api/lanterns");
+    source = s;
+    s.addEventListener("snapshot", (e) => {
+      retryMs = 1_000;
+      const all = JSON.parse((e as MessageEvent).data) as { id: string; x: number; y: number }[];
+      const here = new Set(all.map((l) => l.id));
+      for (const otherId of [...others.keys()]) if (!here.has(otherId)) hide(otherId);
+      for (const l of all) show(l);
+    });
+    s.addEventListener("move", (e) => show(JSON.parse((e as MessageEvent).data)));
+    s.addEventListener("gone", (e) => hide((JSON.parse((e as MessageEvent).data) as { id: string }).id));
+    s.addEventListener("error", () => {
+      if (s.readyState !== EventSource.CLOSED) return;
+      close();
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        open();
+      }, retryMs);
+      retryMs = Math.min(30_000, retryMs * 2);
+    });
+  };
+
+  const close = (): void => {
+    source?.close();
+    source = null;
+    if (retryTimer !== null) clearTimeout(retryTimer);
+    retryTimer = null;
+  };
+
+  // A hidden tab isn't on the page right now: its lantern goes out for
+  // everyone, and it stops listening, so a forgotten tab neither haunts the
+  // room nor keeps the machine awake.
+  root.addEventListener("visibilitychange", () => {
+    if (root.visibilityState === "hidden") {
+      away = true;
+      if (pending !== null) clearTimeout(pending);
+      pending = null;
+      putOut();
+      close();
+      for (const otherId of [...others.keys()]) drop(otherId);
+    } else {
+      away = false;
+      open();
+      send();
+    }
   });
-  source.addEventListener("move", (e) => show(JSON.parse((e as MessageEvent).data)));
-  source.addEventListener("gone", (e) => hide((JSON.parse((e as MessageEvent).data) as { id: string }).id));
+
+  open();
 }
