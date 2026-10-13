@@ -1,146 +1,203 @@
-# Brief: tell people apart, check it server-side, log it server-side
+# Brief: replace The Scroll with a small shared-world RPG inspired by Ragnarok Online
 
 You're running unattended and nobody can answer questions. When something
 isn't covered here, take the smaller, more reversible choice, write down why
 in `PROCESS.md`, and keep going.
 
-## Where this picks up
+## What this is, and what you're allowed to change
 
-The scroll currently has no notion of a person: every stroke row is
-anonymous, and the one identity-shaped thing in the codebase — a lantern's
-random per-tab id in `src/lib/presence.ts` — is deliberately throwaway,
-in-memory, never logged, and scoped to presence only. `README.md` already
-names this as left open on purpose ("multi-user identity... [is] later
-crits' scope"). This crit is that later crit.
+The pod has decided to retire The Scroll and build a different app in this
+repo: a small, browser-based, multiplayer action RPG in the spirit of
+Ragnarok Online — one shared world where people walk around, fight
+monsters together, level up, trade and team up.
 
-The next crit's brief (read it in full, it's the actual spec you're building
-to):
-<https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/10-fly-by-instruments/>
+You are explicitly allowed to:
 
-Its spec, restated for what that means here:
+- replace the app in `src/` entirely, and rewrite `README.md` for the new app;
+- delete or rewrite `spec/scroll.test.ts` and `spec/lanterns.test.ts`, which
+  encode the old brief;
+- replace the "Your harness" half of `CLAUDE.md` (everything below the
+  `---` line) with rules for the new app.
 
-1. The app is multi-user by that brief's definition: two or more people, each
-   in their own browser, act on shared state, and the app tells them apart.
-2. What each person may see and change is checked **on the server**, and that
-   decision is written down in the repo with why.
-3. The app logs who did what, server-side, and that logging outlives the
-   crit (so it's still there if someone deploys again next week).
-4. At the actual crit, two pod members will use the deployed URL from
-   **separate Chrome profiles** (no shared cookies/storage between them)
-   while a third narrates from `flyctl logs` alone — no clicking through the
-   UI to explain what happened. Build for that: the logs have to be legible
-   enough, and name the two people distinctly enough, that a narrator who
-   wasn't at the keyboard can read a story off them.
+You must not:
 
-## What to build
+- change the top block of `CLAUDE.md` (above the `---` line);
+- break `spec/invariants.test.ts`: `/` answers 200 and `/readme/` serves the
+  current `README.md` with its headings in order;
+- change the deploy shape in `fly.toml`: one shared-cpu-1x machine, 256 MB,
+  one volume at `/data`, no second service (no Redis, no Postgres, no queue).
 
-1. **A real per-visitor identity, server-side.** Give every visitor a
-   long-lived, anonymous identity — a signed or random cookie-backed id is
-   enough; no login, no account, no email. One id per browser profile,
-   stable across reloads, distinct across profiles. This is not the
-   lantern id: lanterns stay exactly as they are (anonymous, in-memory,
-   presence-only, per-tab) — don't merge the two or route one through the
-   other. The new identity is for marks and logs; lanterns are for light.
+Use original names and art. Don't copy Ragnarok Online sprites, music, maps
+or trademarked names into this public repo. Simple shapes, colours and
+original names are fine ("a jelly that eats loot", not "Poring").
 
-2. **Attribute every stroke to its visitor, checked server-side.** Add a
-   column to the `strokes` table (a new migration-shaped `CREATE TABLE IF
-   NOT EXISTS`, following `db.ts`'s existing style — don't break existing
-   rows, which have no visitor id and should read as anonymous/legacy, not
-   be backfilled with a guess) holding that visitor id. `POST
-   /api/strokes` resolves the visitor from the request's own identity
-   (the cookie), never from anything the client's JSON body claims — the
-   same rule `CLAUDE.md` already states for path length and width.
+## The brief this is aimed at
 
-3. **Decide, and enforce server-side, what a visitor's own identity actually
-   gates.** This app has very little to gate — there's no edit or delete to
-   restrict (and there must never be: see `CLAUDE.md`'s no-delete rule,
-   unchanged by this crit) — so the honest answer may be "not much *changes*
-   this crit, but it has to be true going forward." At minimum: a visitor
-   can distinguish *their own* marks from everyone else's when looking at
-   the page (e.g., a `?mine` affordance or equivalent, server-rendered, not
-   a client-side guess from local storage) without that requiring any new
-   client-sent identity claim the server has to trust. If you decide
-   something more is worth gating (e.g., the existing "one mark per visit"
-   judgement call in `README.md` could now be enforced, since there's
-   finally a real notion of a visitor) — that is explicitly allowed by this
-   brief and arguably the more interesting answer, but it is your decision
-   to make and argue for in `README.md`'s "what good means" section, not a
-   quiet default. Whichever you choose, write down in `README.md` *why*,
-   the way every other enforced rule there is justified.
+The next crit is
+<https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/10-fly-by-instruments/>.
+Read it. In short: the app must tell people apart, check on the server what
+each person may see and change, and log who did what, server-side, in a way
+that outlives the crit. At the crit, two pod members open the URL in separate
+Chrome profiles and play, while a third narrates only from
+`mise exec -- flyctl logs -a <repo>`. A game where two characters fight the
+same monster and the logs read like a battle report is the demo.
 
-4. **Server-side logging that outlives the crit.** Every stroke write and
-   every rejected write should produce a structured server-side log line
-   (stdout is fine — that's what `flyctl logs` reads) naming: a short,
-   stable, human-distinguishable identifier for the visitor (not the raw
-   cookie value — hash or truncate it the way `presence.ts` already hashes
-   lantern ids for the stream, so a leaked log line doesn't hand out a
-   working identity), what happened (accepted / rejected and why), and
-   enough about the stroke (not its full path data — that's noise) to
-   narrate from. This needs no new service, no new table beyond the one
-   column above: `console.log` on the already-running Node process is
-   "logging that outlives the crit" as long as Fly keeps serving requests,
-   which it does. Say in `PROCESS.md` what you chose to log and why that's
-   enough for a narrator with no other context to tell two visitors apart
-   from the log alone.
+## Architecture (follow this unless it's impossible)
+
+- **Server-authoritative, tick-based.** The server owns the world state and
+  advances it on a fixed tick (5–10 Hz). Clients only send intents: "move to
+  tile x,y", "attack monster 12", "use skill 3 on target 7", "pick up item
+  40". The server validates every intent (is that tile walkable, is the
+  target in range, does this character own that item, is it on cooldown)
+  and rejects anything invalid. Never trust the client for damage, position,
+  inventory or XP.
+- **Transport.** Server → client: Server-Sent Events, the same approach the
+  old `src/lib/presence.ts` used (heartbeat comments, client reconnects when
+  the stream drops, clean up on abort). Client → server: small JSON POSTs
+  under `src/pages/api/`. Send per-map deltas, not the whole world, each
+  tick. Only switch to WebSockets if SSE genuinely can't do the job, and
+  write down why in `PROCESS.md`.
+- **Rendering.** A tile grid on a `<canvas>`, top-down or simple isometric,
+  click-to-move with A* pathfinding on the client for preview only — the
+  server recomputes and validates the path. No game engine, no client
+  framework. Keyboard must work too (arrow keys move, a key to attack the
+  nearest target), so a pointer is never the only way in.
+- **Identity.** No accounts, no login, no email. On first visit the player
+  picks a character name; that character is bound to an httpOnly cookie
+  (random, unguessable). One browser profile = one character, stable across
+  reloads; two profiles = two characters. Identity always comes from the
+  cookie on the server, never from anything in a request body.
+- **Persistence.** SQLite (`better-sqlite3`, already a dependency) on the
+  volume, via `DB_PATH` as today. Persist only what matters across restarts:
+  characters, stats, levels, XP, job, skills, inventory, equipment, cards,
+  refine levels, zeny, parties, guilds, guild storage, vending stalls.
+  Monster positions and HP, and who is online, live in memory and are
+  rebuilt on restart (monsters respawn — that's fine and RO-like).
+- **Memory budget.** Everything has to fit in 256 MB. Cap monsters per map,
+  online players and dropped items, and say what the caps are.
+- **Logging is a feature.** Every meaningful server-side event writes one
+  structured line to stdout, prefixed by a category, naming characters by
+  name plus a short hash of their id (never the raw cookie):
+  `[join] Alice#a3f entered Prontera-like town`,
+  `[combat] Alice#a3f hit Jelly#12 for 34 (fire vs water x1.5)`,
+  `[drop] Bob#9c1 looted Jelly Card`,
+  `[reject] Bob#9c1 tried to pick up item 40 owned by Alice#a3f`,
+  `[refine] Alice#a3f +6 Sword failed: broke`,
+  `[trade] Alice#a3f gave Bob#9c1 2 Red Potions for 50z`.
+  Rejections must be logged too: that's how the narrator shows the server
+  enforcing the rules. Don't log every movement step; summarise.
+
+## Build in stages
+
+Commit each stage with its tests before starting the next, and keep `main`
+deployable after every commit. If you run out of time, stop at the end of a
+stage — a finished stage 3 beats a half-built stage 7. Record in `PROCESS.md`
+which stages you finished.
+
+1. **Arrive in town together.** Character creation (name, cookie identity),
+   one town map, click-to-move and keyboard movement, everyone on the map
+   sees everyone else move live, names above heads, chat bubbles, a few
+   emotes. Structured logging from this stage on. Replace the old app at `/`.
+   The page must still answer 200 and render something meaningful (the town,
+   who is here) with JavaScript disabled, even if playing needs a script.
+2. **Fight in the field.** A field map joined to town by a warp portal.
+   Three monster types with different AI: a passive jelly that also picks up
+   loot left on the ground, an aggressive one that chases players in range,
+   and one that calls nearby friends when attacked. Server-tick combat with
+   attack speed, hit/flee, crits and a small element table (at least
+   neutral/fire/water/earth/wind). Base level and job level as two XP bars,
+   level-up announcement, HP/SP regen, and a death penalty (lose a small %
+   of XP, respawn at the town save point).
+3. **Loot.** Drops with rarity, ground items with a short ownership window,
+   an inventory with a weight limit based on STR (over 50% stops regen,
+   over 90% stops attacking), equipment slots, and cards: a very rare drop
+   from each monster that can be slotted into gear for a bonus. One MVP boss
+   on a timed respawn with a visible "returns in N minutes" marker; the
+   player who dealt the most damage gets the MVP reward, and the server
+   announces it to everyone.
+4. **Become someone.** Stat allocation (STR/AGI/VIT/INT/DEX/LUK) with a
+   rising cost per point, a Novice job, and three first jobs reached by a
+   short job-change task: a melee fighter, a caster, and a support/healer.
+   Each has a small skill tree (3–5 skills, prerequisites, passive and
+   active, cast time interrupted when hit for casters). The healer must be
+   genuinely useful to others (heal and a buff), so playing together
+   matters.
+5. **Party up.** Create/invite/leave a party, see party members' HP, party
+   chat, and XP sharing (even split only when members are within a level
+   range, else each keeps their own). The server checks every party action
+   (only the leader invites/kicks, you can't join a party you weren't
+   invited to).
+6. **Economy.** NPC shop and zeny; equipment refining +1…+10 with a growing
+   chance of breaking the item above a safe level; a player trade window
+   where both sides must confirm the same contents (any change resets both
+   confirmations); vending stalls a character can open in town that others
+   can browse and buy from while the seller stays idle. All money and item
+   moves happen in one SQLite transaction, so nothing is duplicated or lost.
+7. **Guilds and a second field.** Create a guild, invite/leave, a guild
+   storage only members can use (server-checked), guild chat, and a second
+   field or dungeon map with its own monsters and a stronger MVP.
+
+Out of scope: guild siege / castle wars, rebirth, pets, marriage, crafting,
+mounts, real-money anything, accounts or passwords.
+
+## The multiplayer decision to write down
+
+`README.md` must contain one deliberate decision about what happens when
+several people act on the same thing at once, with the options considered
+and the cost of the one chosen. Use loot ownership: who gets a drop when two
+players fought the same monster, and what happens to unclaimed loot (it
+becomes free for all after a few seconds; the looter jelly may eat it). Also
+write down, with why, what each player may see and change (other players'
+inventories are private; vending stalls and trade windows are the only ways
+to give items; party and guild storage rules), since crit 10 asks for that
+explicitly.
 
 ## What good looks like
 
-- Open the deployed site in two separate Chrome profiles. Draw a mark in
-  each. `mise exec -- flyctl logs -a <this-repo-name>`, tailed live, shows
-  two distinguishable lines, one per profile, without needing to look at
-  the browsers at all.
-- A mark made in one profile is still visible to the other profile on
-  reload (this doesn't change — marks were never live) but each page can
-  now tell you which marks were *yours*, from that profile's own cookie,
-  checked server-side.
-- Nothing here requires an account, a login screen, or a name. "Tell people
-  apart" is satisfied by a stable anonymous identity, the same spirit as
-  the lantern id, just persistent and attributed instead of throwaway and
-  presence-only.
+- Open the deployed site in two separate Chrome profiles. Both pick names,
+  meet in town, walk through the portal and fight the same monster. Damage
+  numbers pop on both screens; the drop is claimed by the right player;
+  `flyctl logs` tells the whole story without anyone looking at a browser.
+- Trying to cheat (posting an attack on a monster across the map, picking up
+  someone else's protected item, trading an item you don't own, joining a
+  party uninvited) is rejected by the server and shows up as a `[reject]`
+  log line.
+- It feels like a game: responsive movement, readable hit feedback, a
+  satisfying level-up and rare-drop moment, and a world that's more fun with
+  two people than one.
+- Accessible enough: keyboard play, text for every status (not colour
+  alone), AA contrast, and `prefers-reduced-motion` respected for effects.
 
 ## Tests
 
-`spec/scroll.test.ts`, `spec/lanterns.test.ts` and `spec/invariants.test.ts`
-all stay green; add to them, don't weaken them. Add tests that would fail
-without this work, for example:
+Keep `spec/invariants.test.ts` green. Replace the old specs with tests for
+the new rules, run against the running app the same way the existing specs
+do (see `spec/global-setup.ts`). At least:
 
-- two requests with different visitor cookies produce strokes attributed to
-  different ids, and a request with no cookie yet gets one assigned
-  (check the `Set-Cookie` behaviour, not just the stored row);
-- the server resolves the visitor from its own cookie/session even if the
-  request body includes a claimed id, and the claimed id is ignored;
-- a stroke write produces a log line (capture `console.log` in the test, or
-  expose a small hook if that's cleaner) naming the visitor and the
-  outcome;
-- whatever your README decision in step 3 turns out to gate, has a test
-  that fails without the gate and passes with it.
+- two clients with different cookies are different characters; a body that
+  claims another character's id is ignored;
+- the server rejects invalid intents (out of range attack, unwalkable tile,
+  item you don't own, skill on cooldown, uninvited party join, guild storage
+  by a non-member) with a 4xx and a log line;
+- damage, element multiplier and XP math for a known stat setup;
+- loot goes to the right player during the ownership window and is free
+  after it;
+- a trade or vending purchase moves items and zeny atomically, and a failed
+  one moves nothing;
+- refining above the safe level can break the item, and a forced-success /
+  forced-failure seed proves both paths (make randomness injectable for
+  tests);
+- a character's level, inventory and zeny survive a server restart.
 
 `pnpm check` and `pnpm check:evidence` pass before every commit. Never
 commit over a red run.
 
-## Leave alone
-
-- The no-edit, no-delete, no-overpaint rules in `CLAUDE.md`, and the
-  `zoneBounds` check — nothing about identity changes any of this.
-- Lantern presence (`src/lib/presence.ts`, `src/pages/api/lanterns.ts`):
-  stays anonymous, in-memory, per-tab, unlogged, exactly as it is. Do not
-  give a lantern a persistent identity or route it through the new visitor
-  cookie.
-- One SQLite file, one volume, one machine (`fly.toml`) — a visitor table
-  or column is still "one table, one file," not a second service.
-- Accounts, login, email, chat, reactions, analytics dashboards. "Tell
-  people apart" is satisfied by an anonymous persistent id; nothing here
-  asks for more than that.
-- The no-JS rendering of `/` and `/readme/` — identity and the "mine" view
-  (if you build it) should degrade sensibly without JavaScript too (a
-  server-rendered cookie check doesn't need a script to work), not require
-  it.
-
 ## Finish
 
-Deploy, and confirm on the live URL, from two separate browser profiles,
-that each profile's marks are attributed to a distinct, stable id and that
-`flyctl logs` narrates the difference without needing to look at either
-browser. Add a `PROCESS.md` entry covering the decisions you made —
-especially what you chose to gate in step 3 and why — then delete
-`prompt.md` in your last commit and push.
+Deploy, then confirm on the live URL with two separate browser profiles that
+both characters see each other, fight the same monster, and that
+`mise exec -- flyctl logs -a <repo>` narrates it. Update `README.md`
+(what the game is, what good means, the multiplayer decision, what's out of
+scope) and add a `PROCESS.md` entry covering the stages you finished, the
+decisions you made and anything you cut. Delete `prompt.md` in your last
+commit and push.
