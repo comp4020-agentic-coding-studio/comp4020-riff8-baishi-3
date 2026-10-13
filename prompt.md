@@ -59,10 +59,18 @@ creative directions (a sentence or two each: tone, palette, what the jelly
 and the MVP are), pick one, and record why in `docs/DECISIONS.md`. Don't
 spend long on this; one decision, then build.
 
-Everything must be original. Don't copy Ragnarok Online sprites, music, maps
-or trademarked names into this public repo. Simple shapes, colours and
-procedural art are fine. List every asset and where it came from in
-`docs/ASSETS.md`.
+Don't copy Ragnarok Online sprites, music, maps or trademarked names into this
+public repo.
+
+**Art: no ugly vector graphics.** Do not draw the game's characters,
+monsters, tiles, items or UI as plain vector shapes (flat SVG circles and
+rectangles, canvas-drawn primitives, coloured blocks). That look is
+explicitly forbidden. Use proper raster sprite art from CC0 packs instead,
+such as Kenney's (<https://kenney.nl/assets>), which are free to use in a
+public repo. Pick one coherent pack family so tiles, characters, monsters
+and UI share a style, commit the sprites you use under the repo, and render
+them with crisp pixel scaling where the art is pixel art. List every asset,
+its pack, URL and licence in `docs/ASSETS.md`.
 
 ## The brief this is aimed at
 
@@ -182,7 +190,8 @@ guild storage only members can use, and a second field or dungeon with its
 own monsters and a stronger MVP.
 
 **If time is short, cut** (in this order): the second map, guilds, vending,
-refining, extra skills, extra monster types, art polish.
+refining, extra skills, extra monster types, art polish. Cutting art polish
+never means falling back to vector shapes: CC0 sprites from the start.
 **Never cut:** two players in separate profiles fighting the same monster
 together, server-side validation, fair loot ownership, the party, the
 structured logs, and the tests for them.
