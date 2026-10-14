@@ -21,11 +21,25 @@
   level, bag and zeny surviving a simulated restart; the no-JS form.
 - `spec/invariants.test.ts` — the course's own: `/` and `/readme/`.
 
-The "restart" test simulates one in-process (memory wiped, SQLite kept). A
-real process restart was also checked by hand: stop the server, start it,
-reload two browsers, and both characters reappeared where they stood.
+The "restart" test simulates one in-process (memory wiped, SQLite kept, open
+streams closed). Real restarts were checked by hand too: a shop purchase
+followed immediately by `kill -9` on the server kept the zeny spent and the
+potion bought; two browsers left open across a restart reconnected and
+showed both characters where they stood; an open vending stall survived and
+was still buyable.
+
+All 50 specs also pass against the Docker image CI builds, run the way
+`checks.yml` runs it (`docker run --tmpfs /data`); and the same image with
+`FLY_APP_NAME` set answers 404 on the test route.
 
 ## In a browser
+
+Found this way and fixed (none of them a spec failure): the no-JS form's
+500, characters landing on the same tile, names drawn under sprites, a
+stall's seller intercepting the click for the stall, the trade window's ×
+leaving the trade open, the MVP banner spilling over the side panel, and a
+tab never resyncing after a restart.
+
 
 Two isolated `agent-browser` sessions (no shared cookies) at 1440×900:
 created a Warden and an Ember through the real form, walked both to the
@@ -78,6 +92,10 @@ start, with no growth trend worth chasing on a world this size.
 - 2026-10-14, after those fixes, the table above.
 
 ## Not tested
+
+The live Fly deployment: this run doesn't deploy (CI deploys the pod's app
+when the harness pushes), so the two-profile check on the live URL and
+`flyctl logs` narration are for the crit itself.
 
 Real touch input; more than a handful of simultaneous players; a slow
 network (the tools here can abort requests but not throttle them); a real

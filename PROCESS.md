@@ -86,3 +86,11 @@ Nothing from the brief's list was cut. What's thinner than it could be:
 monster variety reuses two sprites with a hue shift, the barrow is untuned,
 and the bots never reach the MVPs on their own in a few minutes (a party of
 level-1 characters shouldn't).
+
+## Finish (2026-10-14)
+
+All four passes are in, `pnpm check` is green (50 specs) locally and against
+the CI image, and two-profile browser runs covered the definition of done
+except the live URL: as a pod run this doesn't deploy or push, so CI ships
+it and the live two-profile check happens at the crit. `prompt.md` is
+deleted in the last commit, as the riff asks.
