@@ -39,14 +39,23 @@ in both.
 `node scripts/bots.ts --url <server> --bots N --minutes M [--solo]` runs
 headless players through the same HTTP API and stream a browser uses.
 
-| | Target | Measured |
-| --- | --- | --- |
-| first level-up | 20–60 s | party 24 s each; solo 19, 20 and 67 s |
-| level after 4 min | 3 | party 3/3/3; solo 3/3/2 |
-| deaths in 4 min, party vs solo | solo clearly more | party 2, solo 7 |
-| first card | 5–15 min of party play | none in 4 min (2% rate; expected ~1 per 8 min at this kill rate) |
-| memory, 3 bots | well under 256 MB | 49 MB in the Docker image; ~110 MB RSS for bare node locally |
-| server errors | 0 | 0 in every run |
+Latest numbers (5 min, 3 bots: Warden, Ember, Mender; party and solo side
+by side on two fresh local servers):
+
+| | Target | Party | Solo |
+| --- | --- | --- | --- |
+| first level-up | 20–60 s | 19, 23, 23 s | 23, 24 s; the Mender never levelled |
+| level after 5 min | 3 | 3, 3, 3 | 3, 3, 1 |
+| kills | party more | 36 | 28 (Mender: 1) |
+| deaths | solo more | 1 | 3 |
+| first card | within 15 min | 47 s (lucky) | none |
+| trades completed | some | 7 | n/a |
+| server errors | 0 | 0 | 0 |
+| ledger balanced | always | yes | yes |
+| node RSS | well under 256 MB | 113 MB | 108 MB |
+
+The earlier 10-minute, 4-bot run (below) reached 118 MB RSS from 79 MB at
+start, with no growth trend worth chasing on a world this size.
 
 ### Runs
 
@@ -60,6 +69,13 @@ headless players through the same HTTP API and stream a browser uses.
   solo player dies three to four times as often, and only a party has a
   Mender topping it up between fights. The bots never attempt the MVP; a
   Lv1 party of three can't take it, which is the point of an MVP.
+- 2026-10-14, 4 bots, 10 min: first card at 118 s, 96 kills, 4 trades, no
+  server errors, ledger balanced, RSS 79 → 118 MB. But 75 deaths: 37 to
+  the Ember Crab, whose 5-tile aggro range reached the middle of the field,
+  and most of the rest to bots fighting on with no potions. Fixes: the MVPs'
+  aggro range is now 3 and they leash at 6 tiles from their lair; the bots
+  retreat to regenerate when low with no potions (a player would).
+- 2026-10-14, after those fixes, the table above.
 
 ## Not tested
 

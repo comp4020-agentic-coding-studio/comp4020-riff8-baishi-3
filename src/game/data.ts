@@ -286,7 +286,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     respawnMs: 8000, temperament: "Passive. Wanders, and eats any loot left lying free on the ground.",
   },
   bristlerat: {
-    name: "Bristlerat", sprite: D(123), scale: 1, level: 4, hp: 140, atk: 22, def: 5, hit: 14, flee: 8,
+    name: "Bristlerat", sprite: D(123), scale: 1, level: 4, hp: 140, atk: 18, def: 5, hit: 14, flee: 8,
     element: "neutral", baseXp: 24, jobXp: 16, ai: "aggressive", aggroRange: 4, moveTicks: 3, atkMs: 1700,
     drops: [{ item: "gnawed_key", chance: 0.45 }, { item: "red_potion", chance: 0.1 }, { item: "rat_card", chance: 0.02 }],
     respawnMs: 10000, temperament: "Aggressive. Chases anyone who strays close.",
@@ -299,7 +299,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   },
   ember_crab: {
     name: "Ember Crab", sprite: D(110), scale: 2, level: 15, hp: 2400, atk: 42, def: 12, hit: 25, flee: 10,
-    element: "fire", baseXp: 900, jobXp: 600, ai: "mvp", aggroRange: 5, moveTicks: 4, atkMs: 1500,
+    element: "fire", baseXp: 900, jobXp: 600, ai: "mvp", aggroRange: 3, moveTicks: 4, atkMs: 1500,
     drops: [{ item: "ember_shell", chance: 1 }, { item: "iron_buckler", chance: 0.3 }],
     mvpReward: "crab_card", respawnMs: 180000,
     temperament: "MVP. Hits hard and hates water. Respawns every three minutes.",
@@ -324,7 +324,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   },
   barrow_wight: {
     name: "Barrow Wight", sprite: D(121), scale: 2, level: 25, hp: 6000, atk: 70, def: 20, hit: 40, flee: 20,
-    element: "water", baseXp: 3000, jobXp: 2000, ai: "mvp", aggroRange: 6, moveTicks: 4, atkMs: 1400,
+    element: "water", baseXp: 3000, jobXp: 2000, ai: "mvp", aggroRange: 3, moveTicks: 4, atkMs: 1400,
     drops: [{ item: "grave_dust", chance: 1 }, { item: "iron_sword", chance: 0.25 }, { item: "ember_rod", chance: 0.25 }],
     mvpReward: "wight_card", respawnMs: 300000,
     temperament: "MVP of the Barrow. Earth breaks it. Respawns every five minutes.",

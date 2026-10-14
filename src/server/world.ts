@@ -31,6 +31,7 @@ const NPC_REACH = 3;
 const TRADE_REACH = 3;
 const VIEW_RANGE = 10;
 const LEASH = 12;
+const MVP_LEASH = 6;
 const RATE_PER_SEC = 12;
 const BURST = 30;
 const CMD_MEMORY = 200;
@@ -1547,7 +1548,9 @@ function stepMonster(m: Monster, ms: MapState, now: number): void {
   }
   if (m.still) return;
   let target = m.target ? players.get(m.target) : undefined;
-  if (target && (target.dead || target.map !== m.map || dist(m.x, m.y, m.homeX, m.homeY) > LEASH)) {
+  // an MVP keeps to its lair: lead it out and it gives up and heals
+  const leash = def.ai === "mvp" ? MVP_LEASH : LEASH;
+  if (target && (target.dead || target.map !== m.map || dist(m.x, m.y, m.homeX, m.homeY) > leash)) {
     m.target = null;
     target = undefined;
     m.damage.clear();

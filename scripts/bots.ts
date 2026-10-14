@@ -4,7 +4,7 @@
 // plays through the same HTTP API and SSE stream a browser does, then prints
 // pacing numbers for docs/TESTING.md.
 //
-//   node scripts/bots.ts [--url http://localhost:8080] [--bots 3] [--minutes 4] [--solo]
+//   node scripts/bots.ts [--url http://localhost:8080] [--bots 3] [--minutes 4] [--solo] [--mvp-level 6]
 //
 // --solo keeps every bot out of parties, for comparing solo against party
 // pacing. Bots never use the test hooks: what they see is what a player sees.
@@ -20,6 +20,8 @@ const BASE = arg("url", "http://localhost:8080");
 const COUNT = Number(arg("bots", "3"));
 const MINUTES = Number(arg("minutes", "4"));
 const SOLO = process.argv.includes("--solo");
+// a party whose every member has reached this level goes after the MVP too
+const MVP_LEVEL = Number(arg("mvp-level", "6"));
 const JOBS: JobId[] = ["warden", "ember", "mender", "warden"];
 
 interface Ent {
@@ -197,7 +199,7 @@ class Bot {
       }
     }
     // a trade every couple of minutes between the leader and the next bot
-    if (this === leader && friends[1] && friends[1].map === this.map && Math.random() < 0.01) {
+    if (!SOLO && this === leader && friends[1] && friends[1].map === this.map && Math.random() < 0.01) {
       const f = friends[1].you;
       if (f && dist(f.x, f.y, you.x, you.y) <= 3) await this.act("trade_request", { target: friends[1].pid });
     }
@@ -228,8 +230,19 @@ class Bot {
         return;
       }
     }
-    // fight: the party's target, or the nearest weak monster (not MVPs)
-    const monsters = [...this.ents.values()].filter((e) => e.k === "m" && MONSTERS[e.type as MonsterId].ai !== "mvp");
+    // hurt with no potion: back off toward the gate and let regen work
+    const potions = this.me.inventory.some((r: any) => r.item === "red_potion");
+    if (!potions && this.me.hp < this.me.derived.maxHp * 0.4 && this.job !== "mender") {
+      const [sx, sy] = MAPS.field.start;
+      if (dist(you.x, you.y, sx + 2, sy) > 1) await this.walkTo(sx + 2, sy);
+      else await this.act("stop");
+      return;
+    }
+    // fight: the party's target, or the nearest weak monster; until the
+    // party is strong enough, keep well away from an MVP's lair
+    const bold = !SOLO && friends.every((f) => (f.me.level ?? 1) >= MVP_LEVEL);
+    const mvps = [...this.ents.values()].filter((e) => e.k === "m" && MONSTERS[e.type as MonsterId].ai === "mvp");
+    const monsters = [...this.ents.values()].filter((e) => e.k === "m" && (bold || (MONSTERS[e.type as MonsterId].ai !== "mvp" && !mvps.some((v) => dist(v.x, v.y, e.x, e.y) <= 6))));
     const shared = SOLO ? undefined : monsters.find((m) => friends.some((f) => f !== this && f.lastTarget === m.id));
     const target = shared ?? monsters.sort((a, b) => dist(a.x, a.y, you.x, you.y) - dist(b.x, b.y, you.x, you.y))[0];
     if (!target) return;

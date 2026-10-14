@@ -516,3 +516,68 @@ describe("without JavaScript", () => {
     expect(html).toContain('action="/api/character"');
   });
 });
+
+describe("the stream", () => {
+  it("opens at once with a snapshot and sequence number, then numbered deltas with no gaps", async () => {
+    const a = await Client.make("warden", "Strm");
+    await a.place("field", fx, fy);
+    const ctrl = new AbortController();
+    const res = await fetch(new URL("/api/stream", baseUrl), { headers: { cookie: a.cookie }, signal: ctrl.signal });
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    const events: { ev: string; data: any }[] = [];
+    const read = async (): Promise<void> => {
+      const { value } = await reader.read();
+      buf += dec.decode(value, { stream: true });
+      let i: number;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        const ev = /^event: (.*)$/m.exec(chunk)?.[1];
+        const data = /^data: (.*)$/m.exec(chunk)?.[1];
+        if (ev && data) events.push({ ev, data: JSON.parse(data) });
+      }
+    };
+    await read();
+    expect(buf + events.length).toBeTruthy(); // the first chunk arrives without waiting for a heartbeat
+    while (!events.some((e) => e.ev === "snapshot")) await read();
+    const snap = events.find((e) => e.ev === "snapshot")!.data;
+    expect(snap.you).toBe(a.pid);
+    expect(snap.ents.some((e: any) => e.k === "p" && e.id === a.pid)).toBe(true);
+    // the stream never carries a raw character id or cookie
+    expect(JSON.stringify(snap)).not.toContain(a.cookie.split("=")[1]);
+    await a.act("move", { x: fx + 3, y: fy });
+    while (events.filter((e) => e.ev === "delta").length < 3) await read();
+    const seqs = [snap.seq, ...events.filter((e) => e.ev === "delta").map((e) => e.data.seq)];
+    for (let i = 1; i < seqs.length; i++) expect(seqs[i]).toBe(seqs[i - 1] + 1);
+    ctrl.abort();
+  });
+});
+
+describe("guilds", () => {
+  it("members share storage; a leaver loses access; guild chat reaches members only", async () => {
+    const a = await Client.make("warden", "Gld");
+    const b = await Client.make("mender", "Gld");
+    const c = await Client.make("ember", "Out");
+    for (const [x, cl] of [[0, a], [1, b], [-1, c]] as const) await cl.place("town", STEWARD[0] + x, STEWARD[1]);
+    await a.act("guild_create", { name: `Gd${Date.now().toString(36).slice(-6)}` });
+    const guild = (await a.me()).guild.id;
+    expect((await b.act("guild_join", { guild })).status).toBe(403); // not yet invited
+    await a.act("guild_invite", { target: b.pid });
+    expect((await b.act("guild_join", { guild })).status).toBe(200);
+    const potion = (await a.me()).inventory.find((r: any) => r.item === "red_potion");
+    expect((await a.act("storage_put", { item: potion.id, qty: 3 })).status).toBe(200);
+    const stored = (await b.me()).guild.storage.find((r: any) => r.item === "red_potion");
+    expect(stored.qty).toBe(3);
+    expect((await b.act("storage_take", { item: stored.id, qty: 1 })).status).toBe(200);
+    expect((await b.me()).inventory.find((r: any) => r.item === "red_potion").qty).toBe(6);
+    expect((await c.act("storage_take", { item: stored.id, qty: 1 })).status).toBe(403);
+    const lines = await since(() => a.act("chat", { scope: "guild", text: "meet at the well" }));
+    expect(lines.some((l) => l.startsWith("[chat]") && l.includes("(guild): meet at the well"))).toBe(true);
+    expect((await c.act("chat", { scope: "guild", text: "let me in" })).status).toBe(409);
+    expect((await b.act("guild_leave")).status).toBe(200);
+    expect((await b.act("storage_take", { item: stored.id, qty: 1 })).status).toBe(403);
+  });
+});
