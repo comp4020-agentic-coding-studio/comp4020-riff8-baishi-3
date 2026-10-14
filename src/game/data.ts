@@ -317,7 +317,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     respawnMs: 14000, temperament: "Armoured. Calls its kin when struck. Burns.",
   },
   grave_jelly: {
-    name: "Grave Jelly", sprite: D(108), hue: 200, scale: 1, level: 11, hp: 300, atk: 22, def: 8, hit: 14, flee: 6,
+    name: "Grave Jelly", sprite: D(108), hue: 90, scale: 1, level: 11, hp: 300, atk: 22, def: 8, hit: 14, flee: 6,
     element: "water", baseXp: 100, jobXp: 70, ai: "looter", aggroRange: 0, moveTicks: 6, atkMs: 2000,
     drops: [{ item: "jelly_gel", chance: 0.8 }, { item: "blue_potion", chance: 0.08 }],
     respawnMs: 12000, temperament: "Passive. Drifts toward loot nobody claimed and swallows it.",
@@ -355,7 +355,7 @@ export const TERRAIN: Record<string, TileDef> = {
   Q: { sprite: D(56), walk: true, under: D(0) },
   d: { sprite: D(0), walk: true },
   r: { sprite: D(12), walk: true },
-  s: { sprite: D(48), walk: true },
+  s: { sprite: D(24), walk: true },
   "#": { sprite: D(40), walk: false },
 };
 

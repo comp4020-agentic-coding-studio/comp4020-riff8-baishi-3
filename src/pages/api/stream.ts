@@ -22,7 +22,14 @@ export const GET: APIRoute = ({ request, cookies }) => {
     start(controller) {
       // the first byte goes out at once, so the proxy releases the headers
       controller.enqueue(encoder.encode(": open\n\n"));
-      detach = attachStream(player, (chunk) => controller.enqueue(encoder.encode(chunk)));
+      const close = (): void => {
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
+      detach = attachStream(player, (chunk) => controller.enqueue(encoder.encode(chunk)), close);
       request.signal.addEventListener("abort", () => {
         detach();
         try {

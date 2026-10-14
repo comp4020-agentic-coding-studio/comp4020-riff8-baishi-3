@@ -356,14 +356,20 @@ const touch = (p: Player): void => {
   mapState(p.map).dirty.add("p:" + p.pid);
 };
 
-export function attachStream(p: Player, send: Send): () => void {
+// `close` ends the HTTP response; the simulated restart uses it so a tab
+// reconnects to the new world, as it would after a real restart.
+const closers = new Map<Send, () => void>();
+
+export function attachStream(p: Player, send: Send, close: () => void = () => {}): () => void {
   p.sends.add(send);
+  closers.set(send, close);
   p.lastActive = Date.now();
   send("retry: 2000\n\n");
   send(event("snapshot", snapshot(p)));
   send(event("me", meView(p)));
   return () => {
     p.sends.delete(send);
+    closers.delete(send);
     p.lastActive = Date.now();
   };
 }
@@ -1798,7 +1804,13 @@ export const testing = {
   // What a process restart does to memory: everyone and everything live is
   // forgotten, and only SQLite remains.
   wipe(): void {
-    for (const p of players.values()) for (const s of p.sends) p.sends.delete(s);
+    for (const p of players.values()) {
+      for (const s of p.sends) {
+        p.sends.delete(s);
+        closers.get(s)?.();
+        closers.delete(s);
+      }
+    }
     players.clear();
     byPid.clear();
     queue.length = 0;

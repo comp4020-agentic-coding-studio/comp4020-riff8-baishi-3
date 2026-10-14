@@ -19,6 +19,6 @@ people, monsters and UI match.
 | `public/audio/mvp.ogg` | Music Jingles (`jingles_NES10.ogg`) | same | CC0 | MVP appears or falls |
 | `public/audio/break.ogg` | Music Jingles (`jingles_NES07.ogg`) | same | CC0 | refine breaks |
 
-Two monsters reuse a sprite with a hue shift done at draw time (the Grave
-Jelly is the Mossling turned blue). The sprite indices each thing uses are
+One monster reuses a sprite with a hue shift done at draw time (the Grave
+Jelly is the Mossling turned violet). The sprite indices each thing uses are
 in `src/game/data.ts`.
