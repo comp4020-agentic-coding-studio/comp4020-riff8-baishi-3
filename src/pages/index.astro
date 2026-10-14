@@ -36,8 +36,8 @@ const sprite = (i: number) => `background-position:-${(i % 12) * 48}px -${Math.f
             <span id="conn" />
             <a href="/readme/">About</a>
           </header>
-          <div id="announce" role="status" aria-live="polite" />
           <main class="stage">
+            <div id="announce" role="status" aria-live="polite" />
             <canvas id="game" tabindex="0" aria-label="The game world. Click to move or attack; arrow keys step, A attacks the nearest monster, 1 to 4 use skills." />
             <div id="target" class="target" hidden />
             <div id="modal" class="modal" hidden />

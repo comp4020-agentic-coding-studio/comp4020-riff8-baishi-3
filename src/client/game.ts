@@ -87,6 +87,7 @@ export function start(canvas: HTMLCanvasElement): void {
       return best && dist(best.x, best.y, you.x, you.y) <= 10 ? best : null;
     },
     useSkill(id) {
+      if (game.me?.dead) return game.log("You have fallen. Press R to wake in Hollowfield.", "error");
       const s = SKILLS[id];
       let target: unknown;
       if (s.target === "monster") {
@@ -290,7 +291,10 @@ export function start(canvas: HTMLCanvasElement): void {
     }
     if (ev.repeat) return;
     const k = ev.key.toLowerCase();
-    if (k === "a" || k === " ") {
+    if ((k === "a" || k === " ") && game.me?.dead) {
+      ev.preventDefault();
+      game.log("You have fallen. Press R to wake in Hollowfield.", "error");
+    } else if (k === "a" || k === " ") {
       ev.preventDefault();
       const m = game.nearestMonster();
       if (m) {

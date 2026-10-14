@@ -458,9 +458,10 @@ kbd {
 }
 
 #announce {
-  position: fixed;
+  position: absolute;
   left: 50%;
-  top: 3rem;
+  top: 1rem;
+  width: 90%;
   transform: translateX(-50%);
   z-index: 5;
   font-size: 1.6rem;

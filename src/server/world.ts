@@ -84,7 +84,8 @@ export interface Player {
   guildInvites: Map<number, number>;
   tradeInvite: { from: string; until: number } | null;
   trade: Trade | null;
-  walkedFrom: MapId | null;
+  walkStart: [number, number] | null;
+  lastMoveLog: number;
 }
 
 interface Monster {
@@ -376,7 +377,7 @@ function loadPlayer(row: store.CharRow): Player {
     sends: new Set(), lastActive: Date.now(), lastSaved: Date.now(), regenAt: Date.now() + REGEN_EVERY_MS, dirtyMe: true,
     cmds: new Map(), tokens: BURST, tokenAt: Date.now(), lastRateLog: 0,
     derived: derive(row.job, row.level, row.stats, []), weight: 0, partyInvites: new Map(), guildInvites: new Map(),
-    tradeInvite: null, trade: null, walkedFrom: null,
+    tradeInvite: null, trade: null, walkStart: null, lastMoveLog: 0,
   };
   if (!MAPS[p.map] || !walkable(MAPS[p.map], p.x, p.y)) [p.map, p.x, p.y] = ["town", ...MAPS.town.start];
   [p.x, p.y] = landing(p.map, p.x, p.y, p);
@@ -625,7 +626,7 @@ const handlers: Record<string, Handler> = {
       p.casting = null;
       touch(p);
     }
-    if (p.path.length > 6 && !p.walkedFrom) p.walkedFrom = p.map;
+    if (p.path.length >= 6 && !p.walkStart) p.walkStart = [p.x, p.y];
     return { steps: p.path.length };
   },
 
@@ -1510,10 +1511,17 @@ function stepPlayer(p: Player, now: number): void {
     p.y = y;
     touch(p);
     const portal = portalAt(MAPS[p.map], x, y);
-    if (portal) changeMap(p, portal.to, portal.tx, portal.ty);
-    else if (!p.path.length && p.walkedFrom) {
-      p.walkedFrom = null;
-      p.dirtyMe = true;
+    if (portal) {
+      p.walkStart = null;
+      changeMap(p, portal.to, portal.tx, portal.ty);
+    } else if (!p.path.length && p.walkStart) {
+      // movement is summarised, one line per long walk, never per step
+      const [sx, sy] = p.walkStart;
+      p.walkStart = null;
+      if (now - p.lastMoveLog > 5000) {
+        p.lastMoveLog = now;
+        log("move", `${tag(p)} walked ${dist(sx, sy, p.x, p.y)} tiles across ${MAPS[p.map].name} to ${p.x},${p.y}${nearby(p)}`);
+      }
     }
   }
   // regen
@@ -1606,6 +1614,15 @@ function stepMonster(m: Monster, ms: MapState, now: number): void {
       ms.dirty.add("m:" + m.id);
     }
   }
+}
+
+// "near Marta the Grocer" / "near a Bristlerat": something a narrator can say
+function nearby(p: Player): string {
+  const npc = MAPS[p.map].npcs.find((n) => dist(n.x, n.y, p.x, p.y) <= 3);
+  if (npc) return `, near ${npc.name}`;
+  const m = [...mapState(p.map).monsters.values()].filter((o) => !o.dead && dist(o.x, o.y, p.x, p.y) <= 3)
+    .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
+  return m ? `, near ${mtag(m)}` : "";
 }
 
 const occupied = (ms: MapState, x: number, y: number, self: Monster): boolean =>
