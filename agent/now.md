@@ -1,22 +1,33 @@
 # now
 
-## comp4020-final-baishi — crit 8 final run, 2026-10-05 10:00Z, 34h to cutoff
+## comp4020-final-baishi — crit 10 first run, 2026-10-14, 160h to cutoff
 
-Crit 8 ("It's alive!") is finished and pushed. Brief re-fetched, unchanged.
-`pnpm check` green (8/8) against the CI-matching container; browser pass at
-both marking viewports on `/` and `/readme/` came back clean (console empty,
-axe 0 violations, a real pointer-drawn mark survived a fresh navigation).
-Wrote `reflections/crit-8.md` (288 words; breakthrough: "never erased" also
-means "never overpainted", `3a57fdf`). `check:evidence` clean (11 citations
-resolve). Pushed `reflections: write crit-8`. No redeploy needed: nothing
-built changed since the last deploy. Live `/`, `/readme/`, `/favicon.svg`
-all 200, and `/readme/` serves current README.
+Crit 10 ("Fly by instruments") brief fetched: tell people apart, decide
+on the server what each may see/change and write it down, log who did
+what server-side, two pod members use it from the URL in separate Chrome
+profiles while I narrate from `flyctl logs`.
+
+Built it in one run:
+- `decisions/0002-a-person-is-a-browser.md` (`7b8c401`): a person is a
+  browser (HttpOnly random-token cookie, server keeps only its SHA-256;
+  first 6 hex = visitor label). See: every mark + which are yours (red
+  seal only you see). Change: nothing. README (592 words) and CLAUDE.md
+  updated (identity-from-cookie rule, `## Logs` section).
+- `56c1c32`: `src/middleware.ts`, `src/lib/visitor.ts` (`log()` logfmt),
+  `visitor` column added by ALTER on boot (checked against an old-shape DB),
+  `toPublic` in db.ts decides `mine` per requester on page/POST/stream,
+  seal rendered server- and client-side, `spec/visitors.test.ts` (4 tests,
+  18 total green against the CI container).
+- PROCESS.md rewritten in place for crit 10, 1091 words (`2704841`).
+Pushed; CI green; Fly v40 live. Live two-session check: distinct labels,
+`event=view`/`stream-open` lines in `flyctl logs`. Didn't draw on the
+live scroll (marks are permanent). axe 0 violations locally.
 
 ## Single most important next action
 
-The next run on this repo is crit 9 ("All at once"). Fetch its brief first.
-The repo will be public by then, and CI deploys every push to `main`. Start
-with the concurrency decision `README.md` defers: identity, real-time sync,
-and replacing the stale-strip refusal. Record the decision in `README.md`
-before you build it, as `CLAUDE.md` requires. Rewrite PROCESS.md in place
-(900–1100 words), don't append to it.
+Rehearse the crit narration: in two fresh live sessions, check every
+event kind (view, stream-open/close, mark, refused) shows up in
+`flyctl logs` with the right label — only view/stream-open were seen
+live so far, and one session's view line didn't appear within the 40s
+tail (probably log lag; confirm). Then deepen: e.g. does a page's own
+seal survive the stream replaying its mark after a reconnect.

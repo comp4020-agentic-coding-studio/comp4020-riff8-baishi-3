@@ -199,34 +199,20 @@ Durable self-knowledge, curated run by run; ephemeral state belongs in
   on `comp4020-final-baishi` (2026-09-30) testing the exact
   `docker build`/`docker run --tmpfs /data` sequence CI's `checks.yml` runs,
   before trusting a `flyctl deploy`.
-- **A Dockerfile comment claiming "native build toolchain needed as a
-  fallback for X" is a testable claim, not a safe default to copy —
-  inspect the actual installed package before trusting it.** On
-  `comp4020-final-baishi`, the template's own Dockerfile installed
-  `python3 make g++` in both build and runtime stages with a comment
-  saying they were "the fallback for when no prebuilt binary matches this
-  exact node/arch (prebuild-install tries that first)" for
-  `better-sqlite3`. Checked directly by inspecting the installed package
-  inside a built image: `better-sqlite3@13.0.3` has no `install`/
-  `postinstall` script at all (its `package.json` `scripts` block only has
-  `build-release`/`build-debug`/`test` — nothing npm/pnpm ever runs on
-  install) — it ships a prebuilt N-API binary for every platform/arch pair
-  directly inside the package itself (`prebuilds/linux-x64.node` and seven
-  siblings), selected at require-time by `lib/binding.js` on
-  `process.platform`/`process.arch` alone. N-API is ABI-stable across Node
-  versions, so there's no "exact node/arch" mismatch this fallback could
-  ever be needed for on the plain `linux-x64` glibc image the Dockerfile
-  already builds on. Confirmed by rebuilding `--no-cache` with the apt
-  install removed from both stages and running the exact CI command
-  (`docker build` + `docker run -d --init --tmpfs /data`): built clean, a
-  real `curl` POST round-tripped a mark, `pnpm check` green against the
-  container. The general check, worth applying to any future Node/native-
-  module Dockerfile: grep the dependency's own `package.json` for an
-  `install`/`postinstall` script and check whether it ships `prebuilds/`
-  directly, before assuming a native toolchain install is load-bearing —
-  many modern native modules (anything built on N-API, not just
-  better-sqlite3) bundle prebuilt binaries and need no toolchain on any
-  mainstream Linux/macOS/Windows target at all.
+- **A native module with a `binding.gyp` gets an implicit `node-gyp
+  rebuild` on install even with no install script** (npm and pnpm both
+  default to it), whenever its build is allowed (`allowBuilds` in
+  `pnpm-workspace.yaml`). `better-sqlite3@13` bundles `prebuilds/` and
+  loads them ahead of `build/`, so on `comp4020-final-baishi` the right
+  setting is `better-sqlite3: false`, and the image needs no Python or
+  compiler. Whether the rebuild runs also varied by pnpm version (11.9
+  ran it, 12.10 didn't), and a bare `corepack enable` fetches npm's
+  floating `latest`, so CI's docker build broke with no commit to blame.
+  Pin pnpm in the Dockerfile to `mise.toml`'s version
+  (`corepack install -g pnpm@<v>`). Local Docker here has no buildx; to
+  build with BuildKit like CI, download the buildx binary into a scratch
+  `DOCKER_CONFIG=<dir>/cli-plugins/` and run `sudo env DOCKER_CONFIG=<dir>
+  DOCKER_BUILDKIT=1 docker build`.
 - A bare SVG `<path d="M x y">` (a moveto with no drawing command at all)
   has **no paintable geometry** — Chromium renders nothing for it, even
   with `stroke-linecap: round` set, even though the path element exists in
@@ -1968,6 +1954,39 @@ Durable self-knowledge, curated run by run; ephemeral state belongs in
   then on it's public and CI deploys every push, so every commit is
   public too. Crit 9 owns the deferred concurrency, identity and
   real-time decisions.
+  Crit 9 first run, 2026-10-07 (160h): decision recorded first as
+  `decisions/0001-two-marks-at-once.md`, then SSE live sync with SQLite
+  replay via `Last-Event-ID` and server-side placement by arrival.
+  Second run (154h): live stop/start reconnect verified; fixed the
+  stream's 20s late open and racing spec files. See `now.md`.
+  Third run (143h): the client dropped out-of-order marks (see the
+  high-water-mark entry); fixed `a1cc5f2`, deployed.
+  Fourth run (136h): mobile two-tab mid-drag test and README/decision
+  re-read both clean; no change.
+  Fifth run (130h): in-range dep patches (`ab9627c`); repo is public,
+  so the push deployed via CI (Fly release v20) — `flyctl releases`
+  confirms a CI deploy without `gh` auth.
+  Sixth run (119h): clean re-check, no change.
+  Seventh run (112h): stream died for good on a refused reconnect (see
+  the EventSource entry); fixed `632f838`, CI deploy v23 failed on Fly's
+  side, redeployed by hand (v24).
+  Eighth run (106h): fan-out with abrupt disconnects clean; comment
+  fix only.
+  Ninth run (95h): astro 7.3.8 patch (`7c044b4`); CI's docker build
+  then failed. Tenth run (88h): traced to the floating corepack pnpm and
+  better-sqlite3's implicit node-gyp build (see the binding.gyp entry);
+  fixed `66a7297`, CI green, deployed by CI (v29).
+  Eleventh run (82h): clean re-check, no change.
+  Twelfth run (71h): local stream latency 1–7 ms per mark; no change.
+  Thirteenth (64h) to sixteenth (40h) runs: clean
+  re-check, no change.
+  Crit 9 finished 2026-10-12 (34h): `reflections/crit-9.md` written
+  (breakthrough: the ADR's sentences as claims to break), pushed
+  `2c3161e`, CI check+deploy green, live confirmed. Crit 10 ("Fly by
+  instruments", logging/observability) continues in the same repo.
+  Crit 10 first run, 2026-10-14 (160h): identity as a browser cookie
+  (ADR 0002), `mine` decided per requester, seal on your own marks,
+  logfmt logs of who did what; CI-deployed v40. See `now.md`.
 
 - `comp4020-crit7-baishi` (Crit Roster, modelling this course's own weekly
   crit-group scheduling) had its first build run on 2026-09-23,
@@ -3322,6 +3341,51 @@ Durable self-knowledge, curated run by run; ephemeral state belongs in
   curve via the convex-hull property; allow for stroke width/halo). A
   persistence promise is about what the user *sees* surviving, not just
   which SQL statements exist.
+- **An SSE endpoint must write something the moment it opens.** Node
+  (and Fly's proxy) hold response headers until the body's first byte, so
+  a stream that only sends heartbeats leaves `EventSource` at
+  "connecting" until the first one. Found on `comp4020-final-baishi`;
+  an immediate comment line (`: open`) fixes it. Test the first chunk,
+  not just the headers.
+- **Spec files hitting one shared running app race by default** (vitest
+  runs files in parallel). A test that counts rows or expects the next
+  id passes or fails on timing. Set `fileParallelism: false`, and treat
+  a live-delivery test that passed in CI as unproven until it's run
+  red against the unfixed build.
+- **A live-sync client that dedupes by "id <= highest seen" loses data
+  whenever ids can arrive out of order** — and they can: a POST response
+  and an SSE stream are separate connections, and a reconnect replays
+  older ids after the client already saw a newer one from its own write.
+  Server-side replay being correct says nothing about the client. Keep a
+  set of drawn ids (plus the server-rendered floor). Repro on
+  `comp4020-final-baishi`: `agent-browser network route --abort` on the
+  stream, write from elsewhere, write from the page, unroute, compare
+  the page's count with the server's. A jsdom spec loading the real
+  rendered HTML can drive the client module directly when it touches
+  only plain DOM.
+- **`EventSource` reconnects on its own only after a network error; a
+  reconnect answered with a non-200 (Fly's proxy gives 502 while a deploy
+  or wake fails) closes it for good, silently.** Repro: kill the app,
+  serve a 503 on its port (tiny `http.server`) through one retry, restart
+  the app, write a mark — the page never gets it. Fix: on `error` with
+  `readyState === CLOSED`, open a new one after a backoff from a replay
+  floor the server can fill. Found on `comp4020-final-baishi`.
+- **A CI-driven Fly deploy can fail on Fly's side** (machines-API timeout,
+  "lease currently held by Fly.io system") and leave the app 502 for
+  minutes. After every push on a CI-deployed repo, check `flyctl
+  releases` for `failed`; a manual `flyctl deploy --remote-only
+  --ha=false` clears the lease and ships. Also check the Actions run
+  itself, readable without auth: `curl -s 'https://api.github.com/repos/
+  <org>/<repo>/actions/runs?per_page=3'` for `conclusion`, then
+  `.../runs/<id>/jobs` for the failing step — a failed `check` job skips
+  `deploy`, so no failed Fly release appears at all.
+- **Live-sync clients that auto-scroll or reflow when remote content
+  arrives must hold still while the local user has a pointer down.** On
+  `comp4020-final-baishi`'s live scroll, an incoming mark grew the canvas
+  and auto-followed to the new end mid-drag, so the rest of the local
+  stroke mapped to the wrong place. Only a two-tab test (start a drag,
+  inject a remote write via `curl`, continue, release) shows it; check
+  the saved path's coordinates, not just that it saved.
 - **Multi-voice headroom is a distinct claim from single/two-voice liveness
   and needs its own audio-domain check.** Every earlier analyser-splice check
   on Drift (liveness, chord mixing, glissando pitch tracking, filter-sweep
