@@ -201,7 +201,7 @@ describe("fighting together", () => {
     const e = await Client.make("ember", "Fight");
     await w.place("field", fx, fy);
     await e.place("field", fx + 4, fy);
-    const id = await spawn("bristlerat", fx + 1, fy, 110);
+    const id = await spawn("bristlerat", fx + 1, fy, 140);
     const before = [(await w.me()).xp, (await e.me()).xp];
     const lines = await since(async () => {
       await w.act("attack", { target: id });
@@ -209,8 +209,8 @@ describe("fighting together", () => {
       await until(async () => (await monster(id))?.dead === true || !(await monster(id)), 15000);
     });
     const combat = lines.filter((l) => l.startsWith("[combat]"));
-    // 29 atk - 4 def at x1.0 variance: the Warden's blow is exactly 25
-    expect(combat.some((l) => l.includes(w.name) && l.includes("for 25,"))).toBe(true);
+    // 29 atk - 5 def at x1.0 variance: the Warden's blow is exactly 24
+    expect(combat.some((l) => l.includes(w.name) && l.includes("for 24,"))).toBe(true);
     expect(combat.some((l) => l.includes(e.name) && l.includes("Firebolt"))).toBe(true);
     expect(lines.some((l) => l.startsWith("[kill]") && l.includes(`Bristlerat#${id}`))).toBe(true);
     expect((await w.me()).xp).toBeGreaterThan(before[0]);
@@ -231,7 +231,7 @@ describe("fighting together", () => {
     await until(async () => !(await monster(id)) || (await monster(id))!.dead);
     await sleep(300);
     const me = await m.me();
-    expect(me.xp).toBe(6); // a Mossling's 12 base XP, x1.15 for two, split two ways
+    expect(me.xp).toBe(5); // a Mossling's 10 base XP, x1.15 for two, split two ways
     expect(me.party.members.map((x: any) => x.pid).sort()).toEqual([w.pid, m.pid].sort());
   });
 
@@ -283,7 +283,7 @@ describe("fighting together", () => {
       await until(async () => (await w.me()).dead, 5000);
     });
     expect(lines.some((l) => l.startsWith("[death]") && l.includes(w.name))).toBe(true);
-    expect((await w.me()).xp).toBe(14); // 5% of 20, floored
+    expect((await w.me()).xp).toBe(14); // 5% of 30, floored
     expect((await w.act("respawn")).status).toBe(200);
     expect(await w.me()).toMatchObject({ map: "town", dead: false });
     await admin.test("clear", { map: "field", noRespawn: true });

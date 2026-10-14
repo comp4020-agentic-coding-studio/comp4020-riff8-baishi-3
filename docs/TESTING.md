@@ -41,18 +41,25 @@ headless players through the same HTTP API and stream a browser uses.
 
 | | Target | Measured |
 | --- | --- | --- |
-| first level-up | 40–90 s | see the latest run below |
-| level after 3 min (party) | 3–4 | |
-| solo deaths per 3 min vs party | solo dies more | |
-| first card | 5–15 min of party play | |
-| memory, 3 bots | well under 256 MB | |
+| first level-up | 20–60 s | party 24 s each; solo 19, 20 and 67 s |
+| level after 4 min | 3 | party 3/3/3; solo 3/3/2 |
+| deaths in 4 min, party vs solo | solo clearly more | party 2, solo 7 |
+| first card | 5–15 min of party play | none in 4 min (2% rate; expected ~1 per 8 min at this kill rate) |
+| memory, 3 bots | well under 256 MB | 49 MB in the Docker image; ~110 MB RSS for bare node locally |
+| server errors | 0 | 0 in every run |
 
 ### Runs
 
 - 2026-10-14, pass 1 numbers, 3 bots (Warden, Ember, Mender) in a party,
   3 min, local Docker image: first level-ups at 12 s, all level 5, no
   deaths, 38 kills, 2 trades, 0 server errors, ledger balanced, 49 MB.
-  Too fast and too safe; retuned in pass 2.
+  Too fast and too safe.
+- 2026-10-14, after retuning (tougher field monsters, XP curve `30 × L²`),
+  3 bots for 4 min, party and solo side by side on two fresh servers: the
+  numbers in the table. Party and solo level at about the same rate, but a
+  solo player dies three to four times as often, and only a party has a
+  Mender topping it up between fights. The bots never attempt the MVP; a
+  Lv1 party of three can't take it, which is the point of an MVP.
 
 ## Not tested
 

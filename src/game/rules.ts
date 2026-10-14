@@ -130,8 +130,8 @@ export function magicDamage(
 export const healAmount = (matk: number, level: number, variance: number): number =>
   Math.round((matk * 1.5 + level * 4 + 20) * (0.9 + variance * 0.2));
 
-export const baseXpToNext = (level: number): number => Math.round(20 * Math.pow(level, 1.8));
-export const jobXpToNext = (jobLevel: number): number => Math.round(15 * Math.pow(jobLevel, 1.8));
+export const baseXpToNext = (level: number): number => Math.round(30 * Math.pow(level, 2));
+export const jobXpToNext = (jobLevel: number): number => Math.round(25 * Math.pow(jobLevel, 2));
 
 // Raising a stat from `current` to current+1.
 export const statCost = (current: number): number => Math.floor((current - 1) / 10) + 2;

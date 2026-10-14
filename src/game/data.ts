@@ -280,19 +280,19 @@ export interface MonsterDef {
 
 export const MONSTERS: Record<MonsterId, MonsterDef> = {
   mossling: {
-    name: "Mossling", sprite: D(108), scale: 1, level: 2, hp: 60, atk: 7, def: 2, hit: 2, flee: 2,
-    element: "earth", baseXp: 12, jobXp: 8, ai: "looter", aggroRange: 0, moveTicks: 6, atkMs: 2000,
+    name: "Mossling", sprite: D(108), scale: 1, level: 2, hp: 80, atk: 9, def: 2, hit: 2, flee: 2,
+    element: "earth", baseXp: 10, jobXp: 7, ai: "looter", aggroRange: 0, moveTicks: 6, atkMs: 2000,
     drops: [{ item: "jelly_gel", chance: 0.6 }, { item: "red_potion", chance: 0.08 }, { item: "mossling_card", chance: 0.02 }],
     respawnMs: 8000, temperament: "Passive. Wanders, and eats any loot left lying free on the ground.",
   },
   bristlerat: {
-    name: "Bristlerat", sprite: D(123), scale: 1, level: 4, hp: 110, atk: 14, def: 4, hit: 6, flee: 8,
-    element: "neutral", baseXp: 28, jobXp: 18, ai: "aggressive", aggroRange: 4, moveTicks: 3, atkMs: 1700,
+    name: "Bristlerat", sprite: D(123), scale: 1, level: 4, hp: 140, atk: 22, def: 5, hit: 14, flee: 8,
+    element: "neutral", baseXp: 24, jobXp: 16, ai: "aggressive", aggroRange: 4, moveTicks: 3, atkMs: 1700,
     drops: [{ item: "gnawed_key", chance: 0.45 }, { item: "red_potion", chance: 0.1 }, { item: "rat_card", chance: 0.02 }],
     respawnMs: 10000, temperament: "Aggressive. Chases anyone who strays close.",
   },
   webspinner: {
-    name: "Webspinner", sprite: D(122), scale: 1, level: 6, hp: 170, atk: 18, def: 6, hit: 8, flee: 10,
+    name: "Webspinner", sprite: D(122), scale: 1, level: 6, hp: 220, atk: 26, def: 6, hit: 8, flee: 10,
     element: "earth", baseXp: 45, jobXp: 30, ai: "caller", aggroRange: 0, moveTicks: 4, atkMs: 1800,
     drops: [{ item: "spinner_fang", chance: 0.4 }, { item: "blue_potion", chance: 0.05 }, { item: "spinner_card", chance: 0.02 }],
     respawnMs: 12000, temperament: "Passive until hit; then every spinner nearby comes running.",

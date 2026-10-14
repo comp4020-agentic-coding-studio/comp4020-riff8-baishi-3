@@ -51,8 +51,8 @@ describe("damage", () => {
 describe("experience", () => {
   it("levels up and grants stat points when XP crosses the curve", () => {
     const start = { level: 1, xp: 0, jobLevel: 1, jobXp: 0, statPoints: 0, skillPoints: 0 };
-    expect(baseXpToNext(1)).toBe(20);
-    const r = gainXp(start, 25, 15);
+    expect(baseXpToNext(1)).toBe(30);
+    const r = gainXp(start, 35, 25);
     expect(r.levels).toBe(1);
     expect(r.state).toMatchObject({ level: 2, xp: 5, jobLevel: 2, jobXp: 0, statPoints: 5, skillPoints: 1 });
   });
