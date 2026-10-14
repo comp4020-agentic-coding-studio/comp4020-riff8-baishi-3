@@ -1,0 +1,527 @@
+/* Panels are Kenney's Pixel UI "Ancient" 9-slice frames, scaled 3x with
+   border-image; the font is Kenney Pixel. See docs/ASSETS.md. */
+
+@font-face {
+  font-family: "Kenney Pixel";
+  src: url("/fonts/kenney-pixel.ttf") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  --bg: #1b1410;
+  --ink: #fdf3e1;
+  --ink-dim: #e6d3b3;
+  --gold: #ffd166;
+  --link: #ffe0a3;
+  --hp: #43a047;
+  --sp: #1e88e5;
+  --xp: #f9a825;
+  --job: #8e24aa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Kenney Pixel", ui-monospace, monospace;
+  font-size: 20px;
+  line-height: 1.15;
+  image-rendering: pixelated;
+}
+
+a {
+  color: var(--link);
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: #3e2a16;
+}
+
+button {
+  border: 9px solid transparent;
+  border-image: url("/sprites/button.png") 9 fill / 9px stretch;
+  background: none;
+  padding: 0 0.3rem;
+  cursor: pointer;
+  line-height: 1;
+}
+button:active {
+  border-image-source: url("/sprites/button-pressed.png");
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+canvas:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+button.quiet {
+  font-size: 0.9em;
+}
+
+input,
+select {
+  background: #fdf3e1;
+  border: 2px solid #6b4423;
+  padding: 0.15rem 0.3rem;
+}
+
+.frame {
+  border: 18px solid transparent;
+  border-image: url("/sprites/panel.png") 12 fill / 18px stretch;
+  padding: 0.25rem 0.5rem;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0.2rem 0 0.4rem;
+  font-weight: normal;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 #2b1b0e;
+}
+h3 small {
+  color: var(--ink-dim);
+}
+small {
+  color: var(--ink-dim);
+}
+
+.icon {
+  display: inline-block;
+  image-rendering: pixelated;
+  vertical-align: middle;
+  flex: none;
+}
+
+/* ---------- landing ---------- */
+
+.landing-main {
+  max-width: 54rem;
+  margin: 1.5rem auto;
+  padding: 0 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+.hero h1 {
+  font-size: 3rem;
+}
+.lede {
+  font-size: 1.2rem;
+}
+.create label {
+  display: block;
+}
+.create fieldset {
+  border: none;
+  padding: 0;
+  margin: 0.6rem 0;
+}
+.jobs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.5rem;
+}
+.job {
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.5rem;
+  align-items: center;
+  border: 9px solid transparent;
+  border-image: url("/sprites/inlay.png") 9 fill / 9px stretch;
+  color: #3e2a16;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+.job small,
+.job span:last-child {
+  color: #5d4026;
+}
+.job input {
+  position: absolute;
+  opacity: 0;
+}
+.job:has(input:checked) {
+  outline: 3px solid var(--gold);
+}
+.job:has(input:focus-visible) {
+  outline: 3px dashed var(--gold);
+}
+.job .sprite {
+  grid-row: span 3;
+  width: 48px;
+  height: 48px;
+  background-image: url("/sprites/dungeon.png");
+  background-size: 576px 528px;
+  image-rendering: pixelated;
+}
+.job span:last-child {
+  grid-column: 2;
+  font-size: 0.9em;
+}
+.create button[type="submit"] {
+  font-size: 1.3rem;
+  margin-top: 0.4rem;
+}
+.error {
+  color: #ffab91;
+}
+.hint {
+  color: var(--ink-dim);
+  font-size: 0.9em;
+}
+
+/* ---------- playing ---------- */
+
+body.playing {
+  height: 100vh;
+  overflow: hidden;
+}
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr minmax(18rem, 22rem);
+  grid-template-rows: auto 1fr 11rem;
+  grid-template-areas:
+    "top top"
+    "stage side"
+    "chat side";
+  gap: 0.3rem;
+  padding: 0.3rem;
+}
+.top {
+  grid-area: top;
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+}
+.top h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+#mapname {
+  color: var(--ink-dim);
+}
+#conn {
+  color: #ffab91;
+}
+.top a {
+  margin-left: auto;
+}
+.stage {
+  grid-area: stage;
+  position: relative;
+  min-height: 0;
+  border: 4px solid #6b4423;
+}
+#game {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+.side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 0;
+}
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.chatbox {
+  grid-area: chat;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.log {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.95em;
+}
+.log p {
+  margin: 0;
+}
+.log .error {
+  color: #ffab91;
+}
+.log .good {
+  color: #a5d6a7;
+}
+.log .system {
+  color: var(--ink-dim);
+}
+.log .party {
+  color: #69f0ae;
+}
+.log .guild {
+  color: #b39ddb;
+}
+.log .announce {
+  color: var(--gold);
+}
+#chat {
+  display: flex;
+  gap: 0.3rem;
+}
+#chat input {
+  flex: 1;
+}
+
+#bars .who {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.bar {
+  position: relative;
+  height: 18px;
+  margin: 3px 0;
+  background: #2b1b0e;
+  border: 2px solid #120b06;
+}
+.bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  transition: width 0.2s;
+}
+.bar span {
+  position: relative;
+  padding-left: 0.3rem;
+  font-size: 0.85em;
+  text-shadow: 1px 1px 0 #000;
+  line-height: 14px;
+}
+.bar.hp i {
+  background: var(--hp);
+}
+.bar.sp i {
+  background: var(--sp);
+}
+.bar.xp i {
+  background: var(--xp);
+}
+.bar.job i {
+  background: var(--job);
+}
+.hotbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-top: 0.3rem;
+}
+.hotbar button {
+  font-size: 0.85em;
+  text-align: left;
+}
+kbd {
+  font: inherit;
+  color: #8a5a34;
+}
+.dead,
+.invite {
+  margin: 0.3rem 0;
+  color: var(--gold);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+}
+.tabs button {
+  flex: 1;
+  font-size: 0.9em;
+}
+.tabs button.on {
+  border-image-source: url("/sprites/button-pressed.png");
+}
+
+.stats {
+  border-collapse: collapse;
+}
+.stats th {
+  text-align: left;
+  padding-right: 0.6rem;
+  font-weight: normal;
+  color: var(--gold);
+}
+.stats td {
+  padding: 1px 0.4rem;
+}
+.derived {
+  color: var(--ink-dim);
+}
+.skill {
+  margin-bottom: 0.4rem;
+}
+.skill.known strong {
+  color: #a5d6a7;
+}
+.skill p {
+  margin: 0.1rem 0;
+  font-size: 0.9em;
+}
+
+.bag,
+.members,
+.help {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.bag li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1px 0;
+}
+.bag li span:not(.icon) {
+  flex: 1;
+}
+.bag input[type="number"] {
+  width: 5em;
+}
+.help li {
+  margin-bottom: 0.4rem;
+}
+
+.target {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  background: rgb(27 20 16 / 85%);
+  padding: 0.4rem;
+  border: 2px solid #6b4423;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: 70%;
+}
+.target[hidden] {
+  display: none;
+}
+
+.modal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 35%);
+}
+.modal[hidden] {
+  display: none;
+}
+.window {
+  position: relative;
+  border: 18px solid transparent;
+  border-image: url("/sprites/panel.png") 12 fill / 18px stretch;
+  padding: 0.3rem 0.6rem;
+  width: min(34rem, 94%);
+  max-height: 92%;
+  overflow-y: auto;
+}
+.window .x {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+.trade {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.trade ul {
+  list-style: none;
+  padding: 0;
+}
+.emotes button {
+  font-size: 1.4rem;
+  margin: 2px;
+}
+
+#announce {
+  position: fixed;
+  left: 50%;
+  top: 3rem;
+  transform: translateX(-50%);
+  z-index: 5;
+  font-size: 1.6rem;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+}
+#announce.show {
+  animation: announce 5s ease-out;
+}
+@keyframes announce {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+  8% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.15);
+  }
+  15% {
+    transform: translateX(-50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #announce.show {
+    animation-duration: 0.01s;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 55vh auto auto;
+    grid-template-areas:
+      "top"
+      "stage"
+      "chat"
+      "side";
+  }
+  body.playing {
+    height: auto;
+    overflow: auto;
+  }
+  #app {
+    height: auto;
+  }
+  .chatbox {
+    height: 9rem;
+  }
+}
+
+.back {
+  max-width: 46rem;
+  margin: 1rem auto 0.5rem;
+}

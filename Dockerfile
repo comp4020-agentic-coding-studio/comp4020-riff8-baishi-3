@@ -24,6 +24,6 @@ COPY --from=build /app/dist ./dist
 COPY README.md ./README.md
 
 ENV HOST=0.0.0.0
-ENV DB_PATH=/data/scroll.db
+ENV DB_PATH=/data/hollowfield.db
 EXPOSE 8080
 CMD ["node", "./dist/server/entry.mjs"]

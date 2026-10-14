@@ -1,23 +1,20 @@
 ---
-import "../styles/global.css";
-import { getAllStrokes } from "../lib/db";
-import { echoFor } from "../lib/echo";
-import { HEIGHT, SEGMENT, SOFT_SPREAD, totalWidth, zoneStart } from "../lib/layout";
+import { JOBS, type JobId } from "../game/data.ts";
+import { currentChar } from "../server/auth.ts";
+import { characterCount, topCharacters } from "../server/db.ts";
+import { onlineSummary } from "../server/world.ts";
+import "../client/style.css";
 
-const strokes = getAllStrokes();
-const count = strokes.length;
-const width = totalWidth(count);
-const zoneX = zoneStart(count);
-const echo = echoFor(strokes[count - 1], count);
-
-const since =
-  count > 0
-    ? new Date(strokes[0].createdAt).toLocaleDateString("en-AU", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+// Rendered on the server every time, so the page says something real with
+// JavaScript off: who's in the world now, the longest-standing adventurers,
+// and a plain form to make a character.
+const me = currentChar(Astro.cookies);
+const online = onlineSummary();
+const top = topCharacters(8);
+const total = characterCount();
+const error = Astro.url.searchParams.get("error");
+const jobs = Object.entries(JOBS) as [JobId, (typeof JOBS)[JobId]][];
+const sprite = (i: number) => `background-position:-${(i % 12) * 48}px -${Math.floor(i / 12) * 48}px`;
 ---
 
 <!doctype html>
@@ -25,111 +22,109 @@ const since =
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>The Scroll</title>
-    <meta
-      name="description"
-      content="A shared ink scroll that only ever grows: one mark per visit, none of them ever erased."
-    />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Hollowfield</title>
+    <meta name="description" content="A small shared-world RPG: three jobs, one village, monsters that are better fought together." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
   </head>
-  <body>
-    <header>
-      <h1>The Scroll</h1>
-      <p class="tagline">
-        One mark, then it stays. <a href="/readme/">What this is, and why</a>.
-      </p>
-      <div id="controls" class="controls"></div>
-    </header>
+  <body class={me ? "playing" : "landing"}>
+    {
+      me ? (
+        <div id="app" data-name={me.name}>
+          <header class="top">
+            <h1>Hollowfield</h1>
+            <span id="mapname" />
+            <span id="conn" />
+            <a href="/readme/">About</a>
+          </header>
+          <div id="announce" role="status" aria-live="polite" />
+          <main class="stage">
+            <canvas id="game" tabindex="0" aria-label="The game world. Click to move or attack; arrow keys step, A attacks the nearest monster, 1 to 4 use skills." />
+            <div id="target" class="target" hidden />
+            <div id="modal" class="modal" hidden />
+          </main>
+          <aside class="side">
+            <section id="bars" class="frame" />
+            <nav id="tabs" class="tabs">
+              <button data-tab="status" class="on">Status</button>
+              <button data-tab="skills">Skills</button>
+              <button data-tab="bag">Bag</button>
+              <button data-tab="party">Party</button>
+              <button data-tab="help">Help</button>
+            </nav>
+            <section id="panel" class="frame panel" />
+          </aside>
+          <section class="chatbox frame">
+            <div id="log" class="log" aria-live="polite" />
+            <form id="chat">
+              <select name="scope" aria-label="chat channel">
+                <option value="say">Say</option>
+                <option value="party">Party</option>
+                <option value="guild">Guild</option>
+              </select>
+              <input name="text" maxlength="120" autocomplete="off" placeholder="Enter to chat" aria-label="message" />
+            </form>
+          </section>
+          <noscript><p class="frame">The world needs JavaScript to play. Your character, {me.name}, is safe.</p></noscript>
+        </div>
+      ) : (
+        <main class="landing-main">
+          <section class="hero frame">
+            <h1>Hollowfield</h1>
+            <p class="lede">
+              An autumn village at the edge of the Amber Fields. Mosslings eat what nobody picks up, bristlerats bite,
+              and the Ember Crab comes back every three minutes. Nobody here gets far alone.
+            </p>
+            <p>
+              <strong>{online.length}</strong> {online.length === 1 ? "adventurer is" : "adventurers are"} in the world now
+              {online.length > 0 && <>: {online.map((o, i) => <>{i > 0 && ", "}{o.name} <small>({JOBS[o.job].name} {o.level}, {o.map})</small></>)}</>}.{" "}
+              {total} {total === 1 ? "has" : "have"} ever set out.
+            </p>
+          </section>
 
-    <main>
-      <div id="canvas-wrap">
-        <svg
-          id="scroll"
-          viewBox={`0 0 ${width} ${HEIGHT}`}
-          width={width}
-          height={HEIGHT}
-          aria-label={`A shared ink scroll of ${count} mark${count === 1 ? "" : "s"} left so far, with a blank space at the end for yours`}
-        >
-          <rect x="0" y="0" width={width} height={HEIGHT} class="paper" />
+          <section class="frame create">
+            <h2>Make a character</h2>
+            {error && <p class="error" role="alert">{error}</p>}
+            <form method="post" action="/api/character" id="create">
+              <label>Name <input name="name" required minlength="3" maxlength="16" pattern="[A-Za-z][A-Za-z0-9 _'\-]{1,14}[A-Za-z0-9]" autocomplete="off" /></label>
+              <fieldset>
+                <legend>Job</legend>
+                <div class="jobs">
+                  {jobs.map(([id, j], i) => (
+                    <label class="job">
+                      <input type="radio" name="job" value={id} required checked={i === 0} />
+                      <span class="sprite" style={sprite(j.sprite.i)} />
+                      <strong>{j.name}</strong> <small>{j.role}</small>
+                      <span>{j.blurb}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <button type="submit">Enter Hollowfield</button>
+              <p class="hint">No account, no email. Your character lives in this browser (a cookie). Another browser profile makes another character.</p>
+            </form>
+          </section>
 
-          {
-            strokes.map((s) => (
-              <g class="mark" data-t={s.createdAt}>
-                <path d={s.d} class="ink-soft" stroke-width={s.width * SOFT_SPREAD} />
-                <path d={s.d} class="ink" stroke-width={s.width} />
-              </g>
-            ))
-          }
-
-          {
-            echo && (
-              <g id="echo">
-                <linearGradient
-                  id="echo-fade"
-                  gradientUnits="userSpaceOnUse"
-                  x1={echo.x1}
-                  y1={echo.y1}
-                  x2={echo.x2}
-                  y2={echo.y2}
-                >
-                  <stop offset="0" class="echo-stop" stop-opacity="0.9" />
-                  <stop offset="0.6" class="echo-stop" stop-opacity="0.45" />
-                  <stop offset="1" class="echo-stop" stop-opacity="0" />
-                </linearGradient>
-                <path
-                  d={`M ${echo.x1} ${echo.y1} L ${echo.x2} ${echo.y2}`}
-                  class="echo"
-                  stroke-width={Math.max(5, echo.width * 0.8)}
-                />
-              </g>
-            )
-          }
-
-          <rect
-            id="zone-outline"
-            x={zoneX + 4}
-            y="4"
-            width={SEGMENT - 8}
-            height={HEIGHT - 8}
-            class="zone-outline"
-          />
-          <text id="zone-prompt" x={zoneX + SEGMENT / 2} y={HEIGHT / 2} class="zone-prompt">
-            {echo ? "continue their line" : "draw here"}
-          </text>
-          <path id="preview" d="" class="ink" />
-          <rect
-            id="zone-hit"
-            x={zoneX}
-            y="0"
-            width={SEGMENT}
-            height={HEIGHT}
-            class="zone-hit"
-            tabindex="0"
-            role="button"
-            aria-label={`Draw your mark here${echo ? ", where a dotted trail continues the last mark" : ""}: drag with a pointer, or press Enter or Space to leave a dot`}
-          />
-        </svg>
-      </div>
-
-      <p id="status" class="status" aria-live="polite">
-        {count === 0
-          ? "Nobody has drawn yet. The blank strip at the right is where you go first."
-          : `${count} mark${count === 1 ? "" : "s"} so far, since ${since}.`}
-      </p>
-      <p id="presence" class="status presence" aria-live="polite"></p>
-    </main>
-
+          <section class="frame">
+            <h2>Longest on the road</h2>
+            {top.length ? (
+              <ol>{top.map((c) => <li>{c.name} <small>— {JOBS[c.job].name}, level {c.level}</small></li>)}</ol>
+            ) : (
+              <p>Nobody yet. Be the first.</p>
+            )}
+            <p><a href="/readme/">What this is, the rules the server enforces, and why</a>.</p>
+          </section>
+        </main>
+      )
+    }
     <script>
-      import { initDrawing } from "../lib/draw";
-      import { initLanterns } from "../lib/lanterns";
-      import { initReplay } from "../lib/replay";
-
-      initDrawing(document);
-      initReplay(document);
-
-      const wrap = document.getElementById("canvas-wrap");
-      if (wrap) wrap.scrollLeft = wrap.scrollWidth;
-      initLanterns(document);
+      import { loadSheets } from "../client/sprites.ts";
+      import { start } from "../client/game.ts";
+      const canvas = document.querySelector<HTMLCanvasElement>("#game");
+      if (canvas) {
+        await document.fonts.load('16px "Kenney Pixel"').catch(() => {});
+        await loadSheets();
+        start(canvas);
+      }
     </script>
   </body>
 </html>

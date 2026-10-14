@@ -1,7 +1,7 @@
 ---
 import { marked } from "marked";
 import readmeSource from "../../README.md?raw";
-import "../styles/global.css";
+import "../client/style.css";
 
 const body = marked.parse(readmeSource, { async: false }) as string;
 ---
@@ -11,41 +11,32 @@ const body = marked.parse(readmeSource, { async: false }) as string;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>About &mdash; The Scroll</title>
+    <title>About &mdash; Hollowfield</title>
     <meta
       name="description"
-      content="What good means for The Scroll, and what's enforced versus judged."
+      content="What Hollowfield is, and the rules its server enforces."
     />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
   </head>
   <body>
     <header>
-      <p class="tagline"><a href="/">&larr; back to the scroll</a></p>
+      <p class="back"><a href="/">&larr; back to Hollowfield</a></p>
     </header>
-    <main class="readme" set:html={body} />
+    <main class="readme frame" set:html={body} />
   </body>
 </html>
 
 <style>
   .readme {
+    max-width: 46rem;
+    margin: 0 auto 3rem;
     line-height: 1.6;
   }
   .readme :global(h1) {
     font-size: clamp(1.75rem, 4vw, 2.5rem);
   }
-  .readme :global(a) {
-    /* --accent alone is 4.30:1 against the page background — under the
-       4.5:1 AA floor, same reason global.css gives .tagline a its own
-       --link color instead. */
-    color: var(--link);
-  }
-  .readme :global(blockquote) {
-    margin: 1rem 0;
-    padding-left: 1rem;
-    border-left: 3px solid var(--accent);
-    /* color, not opacity: opacity would composite the whole subtree as one
-       group and drag a nested link's own --link color down with it, the
-       same trap global.css's .tagline rule was rewritten to avoid. */
-    color: var(--ink-muted);
+  .readme :global(code) {
+    background: rgb(0 0 0 / 25%);
+    padding: 0 0.25em;
   }
 </style>

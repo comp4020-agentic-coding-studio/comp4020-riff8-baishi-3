@@ -35,60 +35,58 @@ agent was directed, not for what anyone owes.
 
 # Your harness
 
-The rules below are derived from `README.md`'s argument, not separate from
-it: if a rule here doesn't trace back to a sentence there, it doesn't belong
-in either.
+Hollowfield is a small shared-world RPG. `README.md` says what it is and what
+good means; these are the rules a change must keep.
 
-## What the app must never do
+## The server is the referee
 
-- **Never delete or edit a saved mark.** `src/lib/db.ts` has no update or
-  delete statement, and none should be added — not even for moderation. If
-  a mark ever needs removing, that's a decision to argue for in
-  `README.md` first, with a real mechanism (who can, and why), not a quiet
-  admin route. Overpainting is erasing too: a new mark's path, halo
-  included, stays inside its own zone (`zoneBounds` in `src/lib/layout.ts`).
-- **Never require an account to draw or to view.** Identity, when it
-  arrives (crit 9), should be the minimum that makes "multi-user" true —
-  an anonymous per-visit token at most — never a login.
-- **Never trust the client for anything `spec/` can check.** Path length,
-  stroke width, request shape: validate in the data layer
-  (`src/pages/api/strokes.ts`), the same place the promise is tested, not
-  just in `draw.ts`.
+- Clients send intents to `POST /api/act`; `src/server/world.ts` queues them
+  and applies them in order at the start of a tick. Never decide an outcome
+  (damage, drops, levels, prices, who won a race) in `src/client/`.
+- Every state-changing intent carries a `cmd` id and goes through `submit()`,
+  so a resend applies once. Don't add a route that mutates the world outside
+  that queue.
+- Validate in the handler, then refuse with `refuse(status, reason)`, which
+  writes the `[reject]` line. A refusal names the reason a player can act on.
+- Anything that moves items or zeny is one `tx()` in `src/server/db.ts`.
+  Anything that creates or destroys them also writes a `ledger()` row, so
+  `audit()` stays balanced; trades, stalls and storage only move rows.
+- Random draws go through `roll()` in `src/server/rng.ts`, never
+  `Math.random`, wherever the outcome matters.
 
-## What every page holds to
+## Identity and permissions
 
-- The page that shows the scroll (`/`) must render the existing marks and
-  answer 200 with JavaScript disabled. Only the act of drawing needs a
-  script — and within that, a pointer is never the only way in: the
-  drawing zone is a real focusable control, not just a hit-tested shape,
-  so Enter/Space works wherever a pointer does.
-- `/readme/` always serves the current `README.md` in full, headings
-  intact — `spec/invariants.test.ts` checks this; don't special-case it
-  away.
+- Who you are comes from the `hf_token` cookie only (`src/server/auth.ts`),
+  never a request body. The database stores the token's hash.
+- Inventories are private (`/api/me` is your own); trades and stalls are the
+  only ways items change hands; guild storage is for that guild's members.
+  `README.md` "Who may see and change what" is the source; change it there
+  first.
+- The stream never carries a character id, only `publicId()`, and the logs
+  name people as `Name#abc` (`src/server/log.ts`).
+
+## Logs
+
+Every meaningful event is one `log(category, …)` line a narrator can read
+aloud: who, what, to whom, the numbers. Summarise movement (map changes, not
+steps). Add a line when you add an intent.
+
+## The test route
+
+`src/pages/api/test.ts` fixes dice, places monsters and simulates a restart.
+It is off on Fly (`testHooks()` in `src/server/rng.ts`). Never let it run
+where real players are.
 
 ## What a change must not break
 
-- One SQLite table, one file, one volume. If a change needs a second
-  service (a queue, a cache, a second database), that's a bigger decision
-  than this file should wave through — raise it in `PROCESS.md` first,
-  with the trade-off named.
-- `pnpm check` and `pnpm check:evidence` pass before every commit. A red
-  run never gets committed over.
-- Every commit that changes behaviour has a test in `spec/` that would have
-  failed without it, where the behaviour is the kind a test can hold —
-  see `spec/scroll.test.ts` for the shape (persistence, validation,
-  no-delete) established this crit.
-
-## What's live, and what must stay out of it
-
-`README.md`'s "All at once" section decides it: only lantern positions are
-live. Presence lives in `src/lib/presence.ts`'s memory and nowhere else —
-never a table, a column, a log line or a second service, and a tab's own
-id never goes out on the stream. Marks still arrive on reload; live ink is
-a new decision for `README.md`, not a quiet extension of the stream.
-
-## Left open on purpose
-
-Multi-user identity and rate-limiting "one mark per visitor" are not bugs
-to fix — they're later crits' scope, named as such in `README.md`. Don't
-build ahead of the crit that's supposed to decide them.
+- `fly.toml`'s shape: one machine, 256 MB, one volume, no second service.
+  Respect the caps in `CAPS` (`src/game/data.ts`).
+- Art is Kenney CC0 raster sprites (`public/sprites/`, listed in
+  `docs/ASSETS.md`). No flat vector or canvas-primitive characters, monsters,
+  tiles or items.
+- `/` answers 200 and shows the world with JavaScript off; `/readme/` serves
+  `README.md` (`spec/invariants.test.ts`).
+- `pnpm check` passes before every commit, against a server started with
+  `DB_PATH` pointing at a scratch file. New rules get a test in `spec/`.
+- Keep `docs/` current: `DESIGN.md`, `DECISIONS.md`, `TESTING.md`,
+  `ASSETS.md`.
