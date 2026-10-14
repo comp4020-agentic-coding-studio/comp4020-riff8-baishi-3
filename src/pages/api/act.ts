@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { currentChar } from "../../server/auth.ts";
 import { GameError } from "../../server/db.ts";
 import { json, readJson } from "../../server/http.ts";
-import { log } from "../../server/log.ts";
+import { log, who } from "../../server/log.ts";
 import { ensureOnline, submit } from "../../server/world.ts";
 
 // Every action in the game is one intent posted here. Who's acting comes from
@@ -15,7 +15,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
   const body = await readJson(request);
   if (body instanceof Response) {
-    log("reject", `${row.name} sent a malformed intent`);
+    log("reject", `${who(row)} sent a malformed intent`);
     return body;
   }
   try {
