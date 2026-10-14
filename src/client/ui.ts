@@ -313,7 +313,9 @@ export function initUi(game: Game): Ui {
     } else if (kind === "emote") {
       body = `<h2>Emote</h2><p class="emotes">${EMOTES.map((e, i) => `<button data-do="emote" data-e="${i}">${e}</button>`).join("")}</p>`;
     }
-    modalEl.innerHTML = `<div class="window">${body}<button class="x" data-do="close" aria-label="close">×</button></div>`;
+    // closing a trade window cancels the trade: it can't sit open unseen
+    const x = kind === "trade" ? `data-do="trade-cancel" aria-label="cancel trade"` : `data-do="close" aria-label="close"`;
+    modalEl.innerHTML = `<div class="window">${body}<button class="x" ${x}>×</button></div>`;
   }
 
   async function showStall(seller: string): Promise<void> {

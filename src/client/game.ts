@@ -248,6 +248,9 @@ export function start(canvas: HTMLCanvasElement): void {
     if (e?.k === "m") {
       game.selected = keyOf(e);
       void game.act("attack", { target: e.id });
+    } else if (e?.k === "p" && ents.has("s:" + e.id) && e.id !== youPid) {
+      // someone minding a stall: clicking them opens it
+      ui.stall(e.id as string);
     } else if (e?.k === "p") {
       game.selected = keyOf(e);
       ui.selected(e.id === youPid ? null : (e as unknown as { id: string; name: string }));
@@ -427,9 +430,9 @@ export function start(canvas: HTMLCanvasElement): void {
       draw(ctx, n.sprite, n.x * PX, n.y * PX, PX);
       label(n.name, n.x * PX + PX / 2, n.y * PX - 4, "#ffe0a3");
     }
+    for (const e of sorted) if (e.k === "s") drawStall(e);
     for (const e of sorted) {
-      if (e.k === "s") drawStall(e);
-      else if (e.k === "m") drawMonster(e);
+      if (e.k === "m") drawMonster(e);
       else if (e.k === "p") drawPlayer(e, now);
     }
     for (const f of overlay.splice(0)) f();
@@ -503,12 +506,27 @@ export function start(canvas: HTMLCanvasElement): void {
     }
   }
 
+  // The seller sits behind a small counter with their sign above; the seller
+  // sprite itself is drawn as an ordinary player on the same tile.
   function drawStall(e: View): void {
     const x = e.rx * PX;
     const y = e.ry * PX;
-    draw(ctx, { sheet: "dungeon", i: 72 }, x, y, PX);
-    label(`🛒 ${e.title as string}`, x + PX / 2, y - 22, "#b3e5fc");
-    label(e.name as string, x + PX / 2, y - 4, "#ffffff");
+    draw(ctx, { sheet: "dungeon", i: 73 }, x + PX * 0.55, y + PX * 0.4, PX * 0.7);
+    overlay.push(() => {
+      ctx.font = '18px "Kenney Pixel", monospace';
+      const text = e.title as string;
+      const w = ctx.measureText(text).width + 16;
+      ctx.fillStyle = "#f3e0b5";
+      ctx.strokeStyle = "#6b4423";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(x + PX / 2 - w / 2, y - 40, w, 20, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#3e2a16";
+      ctx.textAlign = "center";
+      ctx.fillText(text, x + PX / 2, y - 25);
+    });
   }
 
   function drawMonster(e: View): void {
